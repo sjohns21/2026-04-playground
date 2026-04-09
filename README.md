@@ -6,11 +6,23 @@ A collection of small web apps and tools.
 
 | Route | App |
 |---|---|
-| `/` | Flower ID |
+| `/` | Index |
+| `/resume` | Resume |
+| `/fullstack` | Full Stack Demo |
+| `/chat` | Chat |
+| `/flower-id` | Flower ID |
 | `/garden` | Mohana's Garden |
 | `/spots` | Midday Spots |
 | `/auth` | Auth Explorer |
-| `/resume` | Resume |
+
+### Resume
+Steve Johnson's resume — career timeline, trajectory chart, and tech stack.
+
+### Full Stack Demo
+Interactive demo of full-stack product capabilities: kanban sprint board, user management CRUD, live AI chat assistant, animated metrics dashboard, and stack architecture diagram.
+
+### Chat
+Conversational chat powered by Llama 3.1 via Groq.
 
 ### Flower ID
 Take a photo or upload an image to identify any flower. Claude returns the common name, scientific name, plant family, a short description, a fun fact, and a confidence level.
@@ -24,19 +36,17 @@ Uses your GPS coordinates to recommend 2 nearby dog-friendly cafes — hidden ge
 ### Auth Explorer
 Interactive walkthrough of web authorization flows.
 
-### Resume
-Steve Johnson's resume.
-
 ## Setup
 
 1. Install dependencies:
    ```bash
-   pip install flask flask-cors anthropic python-dotenv
+   pip install flask flask-cors anthropic groq python-dotenv
    ```
 
 2. Create a `.env` file:
    ```
    ANTHROPIC_API_KEY=your_key_here
+   GROQ_API_KEY=your_key_here
    ```
 
 3. Run:
@@ -46,4 +56,4 @@ Steve Johnson's resume.
 
 4. Open `http://localhost:3000`
 
-**Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · Vanilla HTML/CSS/JS
+**Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · Llama 3.1 via Groq · Vanilla HTML/CSS/JS
