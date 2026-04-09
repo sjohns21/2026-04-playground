@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>LangGraph Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308;
+      --border: rgba(200,150,255,0.18);
+      --purple: #c77dff;
+      --cyan: #90e0ef;
+      --green: #6effc8;
+      --text: #ddd0ff;
+      --muted: rgba(200,180,255,0.45);
+      --surface: rgba(255,255,255,0.04);
+    }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #07071a 0%, #030308 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 56px;
+    }
+    h1 {
+      font-size: clamp(1.1rem, 4vw, 1.5rem);
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--purple), var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(199,125,255,0.08);
+      border: 1px solid rgba(199,125,255,0.25);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 32px;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Graph card */
+    .graph-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 20px 12px;
+    }
+    .graph-card-title {
+      font-size: 0.62rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    svg {
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+    .graph-node rect,
+    .graph-node circle {
+      transition: stroke 0.3s, fill 0.3s;
+    }
+    #node-start.active circle {
+      stroke: rgba(200,180,255,0.85);
+      fill: rgba(200,180,255,0.15);
+      filter: drop-shadow(0 0 8px rgba(200,180,255,0.5));
+    }
+    #node-agent.active rect {
+      stroke: rgba(199,125,255,0.85);
+      fill: rgba(199,125,255,0.18);
+      filter: drop-shadow(0 0 10px rgba(199,125,255,0.5));
+    }
+    #node-tools.active rect {
+      stroke: rgba(144,224,239,0.85);
+      fill: rgba(144,224,239,0.18);
+      filter: drop-shadow(0 0 10px rgba(144,224,239,0.5));
+    }
+    #node-end.active circle {
+      stroke: rgba(110,255,200,0.85);
+      fill: rgba(110,255,200,0.18);
+      filter: drop-shadow(0 0 10px rgba(110,255,200,0.5));
+    }
+
+    /* Input */
+    .input-section { display: flex; flex-direction: column; gap: 12px; }
+    .chips-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 13px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.2s, color 0.2s;
+      text-align: left;
+    }
+    .chip:hover { border-color: rgba(199,125,255,0.4); color: var(--text); }
+    .input-row { display: flex; gap: 10px; }
+    textarea {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      transition: border-color 0.2s;
+    }
+    textarea::placeholder { color: var(--muted); }
+    textarea:focus { border-color: rgba(199,125,255,0.5); }
+    .run-btn {
+      background: linear-gradient(135deg, rgba(150,80,255,0.25), rgba(80,40,180,0.25));
+      border: 1px solid rgba(200,150,255,0.4);
+      border-radius: 14px;
+      padding: 12px 22px;
+      color: var(--text);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+    .run-btn:hover { border-color: rgba(200,150,255,0.7); }
+    .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Step log */
+    .step-log { display: flex; flex-direction: column; gap: 10px; }
+    .log-entry {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      animation: fadeIn 0.22s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+    .log-badge {
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border-radius: 6px;
+      padding: 3px 7px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+      border: 1px solid;
+    }
+    .log-badge.you   { color: var(--muted); border-color: rgba(200,180,255,0.2); background: rgba(200,180,255,0.05); }
+    .log-badge.agent { color: var(--purple); border-color: rgba(199,125,255,0.3); background: rgba(199,125,255,0.08); }
+    .log-badge.tools { color: var(--cyan);   border-color: rgba(144,224,239,0.3); background: rgba(144,224,239,0.08); }
+    .log-badge.error { color: #ff6b6b; border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.08); }
+    .log-content { font-size: 0.85rem; line-height: 1.6; flex: 1; min-width: 0; }
+    .thinking { color: var(--muted); font-style: italic; margin-bottom: 6px; }
+    .tool-call-row {
+      margin-top: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      color: var(--cyan);
+      background: rgba(144,224,239,0.06);
+      border: 1px solid rgba(144,224,239,0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+    .tool-name { color: var(--purple); font-weight: 600; }
+    .tool-args { color: var(--muted); }
+    .final-answer { color: var(--text); }
+  </style>
+</head>
+<body>
+  <h1>✦ LangGraph Demo ✦</h1>
+  <p class="subtitle">ReAct Agent · Tool Use · Graph Traversal</p>
+  <div class="badge">LangGraph · Claude Sonnet 4.6</div>
+
+  <div class="wrap">
+
+    <!-- Graph visualization -->
+    <div class="graph-card">
+      <div class="graph-card-title">Agent Graph</div>
+      <svg viewBox="0 0 580 225" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,150,255,0.35)"/>
+          </marker>
+          <marker id="arr-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(144,224,239,0.35)"/>
+          </marker>
+          <marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(110,255,200,0.35)"/>
+          </marker>
+        </defs>
+
+        <!-- Edges (behind nodes) -->
+
+        <!-- START → AGENT -->
+        <line x1="74" y1="100" x2="110" y2="100"
+          stroke="rgba(200,150,255,0.25)" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- AGENT → TOOLS (slightly above center) -->
+        <line x1="262" y1="92" x2="360" y2="92"
+          stroke="rgba(200,150,255,0.25)" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="311" y="82" text-anchor="middle" font-size="9"
+          fill="rgba(200,150,255,0.32)" font-family="'Segoe UI',sans-serif" letter-spacing="0.08em">TOOL CALL</text>
+
+        <!-- TOOLS → AGENT arc (below) -->
+        <path d="M 437,124 C 437,162 184,162 184,124"
+          stroke="rgba(144,224,239,0.25)" stroke-width="1.5" fill="none" marker-end="url(#arr-cyan)"/>
+        <text x="310" y="172" text-anchor="middle" font-size="9"
+          fill="rgba(144,224,239,0.32)" font-family="'Segoe UI',sans-serif" letter-spacing="0.08em">RESULT</text>
+
+        <!-- AGENT → END -->
+        <line x1="192" y1="124" x2="188" y2="174"
+          stroke="rgba(110,255,200,0.25)" stroke-width="1.5" marker-end="url(#arr-green)"/>
+        <text x="213" y="153" font-size="9"
+          fill="rgba(110,255,200,0.32)" font-family="'Segoe UI',sans-serif" letter-spacing="0.08em">DONE</text>
+
+        <!-- Nodes -->
+
+        <!-- START -->
+        <g id="node-start" class="graph-node">
+          <circle cx="52" cy="100" r="22"
+            fill="rgba(200,180,255,0.05)" stroke="rgba(200,180,255,0.25)" stroke-width="1.5"/>
+          <text x="52" y="106" text-anchor="middle" font-size="16"
+            fill="rgba(200,180,255,0.55)" font-family="'Segoe UI',sans-serif">▶</text>
+        </g>
+
+        <!-- AGENT -->
+        <g id="node-agent" class="graph-node">
+          <rect x="113" y="76" width="148" height="48" rx="10"
+            fill="rgba(199,125,255,0.07)" stroke="rgba(199,125,255,0.3)" stroke-width="1.5"/>
+          <text x="187" y="97" text-anchor="middle" font-size="11" font-weight="600"
+            fill="rgba(199,125,255,0.85)" font-family="'Segoe UI',sans-serif" letter-spacing="0.12em">AGENT</text>
+          <text x="187" y="113" text-anchor="middle" font-size="8.5"
+            fill="rgba(199,125,255,0.42)" font-family="'Segoe UI',sans-serif" letter-spacing="0.08em">Claude Sonnet 4.6</text>
+        </g>
+
+        <!-- TOOLS -->
+        <g id="node-tools" class="graph-node">
+          <rect x="363" y="76" width="148" height="48" rx="10"
+            fill="rgba(144,224,239,0.07)" stroke="rgba(144,224,239,0.3)" stroke-width="1.5"/>
+          <text x="437" y="97" text-anchor="middle" font-size="11" font-weight="600"
+            fill="rgba(144,224,239,0.85)" font-family="'Segoe UI',sans-serif" letter-spacing="0.12em">TOOLS</text>
+          <text x="437" y="113" text-anchor="middle" font-size="8.5"
+            fill="rgba(144,224,239,0.42)" font-family="'Segoe UI',sans-serif" letter-spacing="0.06em">calculator · time · words</text>
+        </g>
+
+        <!-- END -->
+        <g id="node-end" class="graph-node">
+          <circle cx="188" cy="197" r="20"
+            fill="rgba(110,255,200,0.05)" stroke="rgba(110,255,200,0.25)" stroke-width="1.5"/>
+          <text x="188" y="202" text-anchor="middle" font-size="13"
+            fill="rgba(110,255,200,0.55)" font-family="'Segoe UI',sans-serif">■</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Input -->
+    <div class="input-section">
+      <div>
+        <div class="chips-label">Try</div>
+        <div class="chips">
+          <button class="chip" onclick="setInput(this)">What is 15% of 847?</button>
+          <button class="chip" onclick="setInput(this)">Count the words: "Four score and seven years ago our fathers brought forth on this continent a new nation"</button>
+          <button class="chip" onclick="setInput(this)">What time is it? Also compute 123 × 456.</button>
+          <button class="chip" onclick="setInput(this)">Area of a circle with radius 7 — use π ≈ 3.14159</button>
+        </div>
+      </div>
+      <div class="input-row">
+        <textarea id="input" placeholder="Ask something…" rows="2"></textarea>
+        <button class="run-btn" id="run-btn" onclick="run()">Run</button>
+      </div>
+    </div>
+
+    <!-- Step log -->
+    <div class="step-log" id="step-log"></div>
+
+  </div>
+
+  <script>
+    const inputEl  = document.getElementById('input');
+    const runBtn   = document.getElementById('run-btn');
+    const stepLog  = document.getElementById('step-log');
+
+    function setInput(btn) {
+      inputEl.value = btn.textContent.trim();
+      inputEl.focus();
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function resetGraph() {
+      document.querySelectorAll('.graph-node').forEach(n => n.classList.remove('active'));
+    }
+
+    function activateNode(id) {
+      resetGraph();
+      const el = document.getElementById(`node-${id}`);
+      if (el) el.classList.add('active');
+    }
+
+    function addEntry(badgeClass, badgeText, bodyHtml) {
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      div.innerHTML = `<div class="log-badge ${badgeClass}">${badgeText}</div><div class="log-content">${bodyHtml}</div>`;
+      stepLog.appendChild(div);
+      stepLog.scrollTop = stepLog.scrollHeight;
+    }
+
+    function handleEvent(ev) {
+      if (ev.done) {
+        activateNode('end');
+        return;
+      }
+      if (ev.error) {
+        addEntry('error', 'ERROR', `<span style="color:#ff6b6b">${esc(ev.error)}</span>`);
+        resetGraph();
+        return;
+      }
+
+      if (ev.node === 'agent') {
+        activateNode('agent');
+        if (ev.type === 'tool_calls') {
+          const thinking = ev.content
+            ? `<div class="thinking">${esc(ev.content)}</div>` : '';
+          const calls = ev.tool_calls.map(tc => {
+            const args = JSON.stringify(tc.args);
+            return `<div class="tool-call-row"><span class="tool-name">${esc(tc.name)}</span>(<span class="tool-args">${esc(args)}</span>)</div>`;
+          }).join('');
+          addEntry('agent', 'AGENT', thinking + calls);
+        } else if (ev.type === 'final') {
+          addEntry('agent', 'AGENT', `<div class="final-answer">${esc(ev.content)}</div>`);
+        }
+      } else if (ev.node === 'tools') {
+        activateNode('tools');
+        addEntry('tools', 'TOOLS',
+          `<span class="tool-name">${esc(ev.tool)}</span> → ${esc(ev.content)}`);
+      }
+    }
+
+    async function run() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      stepLog.innerHTML = '';
+      resetGraph();
+      activateNode('start');
+      addEntry('you', 'YOU', esc(text));
+      inputEl.value = '';
+      runBtn.disabled = true;
+
+      await new Promise(r => setTimeout(r, 280));
+      activateNode('agent');
+
+      try {
+        const res = await fetch('/langgraph-api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = dec.decode(value, { stream: true });
+          for (const line of chunk.split('\n')) {
+            if (!line.trim()) continue;
+            try { handleEvent(JSON.parse(line)); } catch {}
+          }
+        }
+      } catch (e) {
+        addEntry('error', 'ERROR', `<span style="color:#ff6b6b">Could not reach server: ${esc(e.message)}</span>`);
+        resetGraph();
+      }
+
+      runBtn.disabled = false;
+    }
+
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(); }
+    });
+  </script>
+</body>
+</html>

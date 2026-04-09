@@ -17,6 +17,71 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
+# LangGraph demo setup
+try:
+    from langgraph.graph import StateGraph, END as LG_END
+    from langgraph.prebuilt import ToolNode
+    from langchain_anthropic import ChatAnthropic
+    from langchain_core.tools import tool as lc_tool
+    from langchain_core.messages import HumanMessage as LGHuman, AIMessage as LGAi, ToolMessage as LGTool
+    from typing import TypedDict, Annotated
+    import operator as _op
+
+    @lc_tool
+    def calculator(expression: str) -> str:
+        """Evaluate a math expression using standard Python syntax, e.g. '2 + 2' or '3.14159 * 7 ** 2'."""
+        allowed = set('0123456789+-*/().% eE ')
+        if not all(c in allowed for c in expression):
+            return "Error: only numeric and basic operator characters are allowed."
+        try:
+            result = eval(expression, {"__builtins__": {}}, {})
+            return str(result)
+        except Exception as e:
+            return f"Error: {e}"
+
+    @lc_tool
+    def word_counter(text: str) -> str:
+        """Count the number of words and characters in a given piece of text."""
+        words = len(text.split())
+        chars_total = len(text)
+        chars_no_spaces = len(text.replace(' ', ''))
+        return f"{words} words, {chars_total} total characters ({chars_no_spaces} without spaces)"
+
+    @lc_tool
+    def current_time() -> str:
+        """Return the current UTC date and time."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        return now.strftime("UTC: %A %B %d, %Y — %H:%M:%S")
+
+    _lg_tools = [calculator, word_counter, current_time]
+
+    class _State(TypedDict):
+        messages: Annotated[list, _op.add]
+
+    _lg_llm = ChatAnthropic(model="claude-sonnet-4-6")
+    _lg_llm_bound = _lg_llm.bind_tools(_lg_tools)
+
+    def _agent(state: _State):
+        return {"messages": [_lg_llm_bound.invoke(state["messages"])]}
+
+    def _route(state: _State) -> str:
+        last = state["messages"][-1]
+        return "tools" if (getattr(last, "tool_calls", None)) else LG_END
+
+    _lg_graph = StateGraph(_State)
+    _lg_graph.add_node("agent", _agent)
+    _lg_graph.add_node("tools", ToolNode(_lg_tools))
+    _lg_graph.set_entry_point("agent")
+    _lg_graph.add_conditional_edges("agent", _route)
+    _lg_graph.add_edge("tools", "agent")
+    _lg_app = _lg_graph.compile()
+    _LG_OK = True
+
+except ImportError:
+    _LG_OK = False
+
+
 @app.route("/")
 def index():
     return send_from_directory(".", "index.html")
@@ -153,6 +218,11 @@ def fullstack():
     return send_from_directory(".", "fullstack.html")
 
 
+@app.route("/llm-explainer")
+def llm_explainer():
+    return send_from_directory(".", "llm-explainer.html")
+
+
 @app.route("/spots")
 def spots_page():
     return send_from_directory(".", "spots.html")
@@ -201,6 +271,71 @@ def recommend():
         result = {"error": "Could not parse recommendations.", "raw": raw}
 
     return jsonify(result)
+
+
+@app.route("/langgraph-demo")
+def langgraph_demo_page():
+    return send_from_directory(".", "langgraph-demo.html")
+
+
+@app.route("/langgraph-api", methods=["POST"])
+def langgraph_api():
+    if not _LG_OK:
+        return jsonify({"error": "LangGraph not installed. Run: pip install langgraph langchain-anthropic"}), 500
+
+    data = request.get_json()
+    msg = (data or {}).get("message", "").strip()
+    if not msg:
+        return jsonify({"error": "No message provided"}), 400
+
+    def generate():
+        try:
+            for step in _lg_app.stream(
+                {"messages": [LGHuman(content=msg)]},
+                stream_mode="updates",
+            ):
+                for node_name, update in step.items():
+                    for m in update.get("messages", []):
+                        if isinstance(m, LGAi):
+                            if isinstance(m.content, list):
+                                text = " ".join(
+                                    b.get("text", "") for b in m.content
+                                    if isinstance(b, dict) and b.get("type") == "text"
+                                )
+                            else:
+                                text = m.content or ""
+
+                            if getattr(m, "tool_calls", None):
+                                yield json.dumps({
+                                    "node": "agent",
+                                    "type": "tool_calls",
+                                    "tool_calls": [
+                                        {"name": tc["name"], "args": tc["args"]}
+                                        for tc in m.tool_calls
+                                    ],
+                                    "content": text,
+                                }) + "\n"
+                            else:
+                                yield json.dumps({
+                                    "node": "agent",
+                                    "type": "final",
+                                    "content": text,
+                                }) + "\n"
+
+                        elif isinstance(m, LGTool):
+                            yield json.dumps({
+                                "node": "tools",
+                                "type": "tool_result",
+                                "tool": m.name,
+                                "content": m.content,
+                            }) + "\n"
+
+        except Exception as e:
+            yield json.dumps({"error": str(e)}) + "\n"
+
+        yield json.dumps({"done": True}) + "\n"
+
+    return Response(stream_with_context(generate()), mimetype="text/plain")
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ A collection of small web apps and tools.
 | `/spots` | Midday Spots |
 | `/auth` | Auth Explorer |
 | `/local-inference` | Local Inference |
+| `/langgraph-demo` | LangGraph Demo |
 
 ### Resume
 Steve Johnson's resume — career timeline, trajectory chart, and tech stack.
@@ -40,11 +41,14 @@ Interactive walkthrough of web authorization flows.
 ### Local Inference
 Chat with Llama 3.2 running locally via Ollama — no cloud, no API key. Supports 1B and 3B model selection with token-by-token streaming.
 
+### LangGraph Demo
+A ReAct agent built with LangGraph and Claude. The agent decides when to call tools (calculator, word counter, current time), and each step of the graph traversal is streamed and visualized live — AGENT and TOOLS nodes light up as the agent reasons and acts.
+
 ## Setup
 
 1. Install dependencies:
    ```bash
-   pip install flask flask-cors anthropic groq python-dotenv requests
+   pip install flask flask-cors anthropic groq python-dotenv requests langgraph langchain-anthropic
    ```
 
 2. Create a `.env` file:
@@ -65,4 +69,4 @@ Chat with Llama 3.2 running locally via Ollama — no cloud, no API key. Support
 
 5. Open `http://localhost:3000`
 
-**Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · Llama 3.1 via Groq · Llama 3.2 via Ollama (local) · Vanilla HTML/CSS/JS
+**Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · LangGraph · Llama 3.1 via Groq · Llama 3.2 via Ollama (local) · Vanilla HTML/CSS/JS

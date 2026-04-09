@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>How LLMs Work · Interactive Explorer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(200,150,255,0.18);
+      --purple: #c77dff;
+      --cyan: #90e0ef;
+      --green: #80ffb4;
+      --pink: #ff6b9d;
+      --gold: #ffd060;
+      --text: #ddd0ff;
+      --muted: rgba(200,180,255,0.45);
+    }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #07071a 0%, #030308 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 24px;
+      background: rgba(3,3,8,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav a { color: var(--muted); text-decoration: none; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.2s; }
+    .nav a:hover { color: var(--purple); }
+    .nav-sep { color: rgba(200,150,255,0.25); }
+    .nav-title { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--purple); }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 52px 24px 36px; }
+    .hero h1 {
+      font-size: clamp(1.4rem, 5vw, 2.2rem); font-weight: 300; letter-spacing: 0.12em;
+      background: linear-gradient(90deg, #c77dff, #90e0ef, #80ffb4, #90e0ef, #c77dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 12px;
+    }
+    .hero p { font-size: 0.82rem; color: var(--muted); max-width: 540px; margin: 0 auto; line-height: 1.7; }
+
+    /* ── Layout ── */
+    .section { max-width: 860px; margin: 0 auto 64px; padding: 0 20px; }
+    .section-label {
+      font-size: 0.6rem; letter-spacing: 0.26em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .section-intro { font-size: 0.8rem; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+
+    /* ── Flow Stage ── */
+    .flow-stage {
+      background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+      border-radius: 20px; padding: 30px 20px 24px;
+      margin-bottom: 16px; position: relative; overflow: hidden; min-height: 170px;
+    }
+    .actors { display: flex; justify-content: space-around; align-items: flex-start; }
+    .actor { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 0 0 90px; }
+    .actor-icon {
+      width: 60px; height: 60px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+      border: 1px solid var(--border); background: rgba(200,150,255,0.06);
+      transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+    }
+    .actor-icon.active { border-color: var(--purple); background: rgba(200,150,255,0.14); box-shadow: 0 0 22px rgba(199,125,255,0.35); }
+    .actor-icon.busy { animation: actorBusy 1.4s ease-in-out infinite; }
+    @keyframes actorBusy {
+      0%,100% { box-shadow: 0 0 8px rgba(199,125,255,0.2); }
+      50% { box-shadow: 0 0 28px rgba(199,125,255,0.6); border-color: var(--purple); }
+    }
+    .actor-label { font-size: 0.6rem; letter-spacing: 0.1em; text-align: center; color: var(--muted); text-transform: uppercase; line-height: 1.4; }
+    .arrow-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+    .packet-fly { position: absolute; display: flex; align-items: center; gap: 6px; pointer-events: none; z-index: 10; }
+    .packet-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--purple); box-shadow: 0 0 8px var(--purple); flex-shrink: 0; }
+    .packet-lbl { font: 0.62rem 'Courier New', monospace; color: var(--cyan); background: rgba(3,3,8,0.92); padding: 3px 9px; border-radius: 6px; border: 1px solid rgba(144,224,239,0.3); white-space: nowrap; }
+
+    /* ── Step Info ── */
+    .step-info {
+      background: rgba(199,125,255,0.04); border: 1px solid rgba(199,125,255,0.14);
+      border-radius: 14px; padding: 20px; margin-bottom: 16px; min-height: 104px;
+    }
+    .step-num { font-size: 0.57rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--purple); margin-bottom: 5px; }
+    .step-name { font-size: 1rem; font-weight: 400; letter-spacing: 0.06em; margin-bottom: 8px; }
+    .step-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.65; }
+    .step-code {
+      margin-top: 12px; font: 0.7rem 'Courier New', monospace; color: var(--cyan);
+      background: rgba(0,0,0,0.35); padding: 12px 14px; border-radius: 8px;
+      border-left: 2px solid rgba(144,224,239,0.5); white-space: pre; overflow-x: auto;
+    }
+
+    /* ── Controls ── */
+    .flow-controls { display: flex; align-items: center; gap: 12px; }
+    .flow-btn {
+      background: linear-gradient(135deg,rgba(150,80,255,0.2),rgba(80,40,180,0.2));
+      border: 1px solid rgba(200,150,255,0.35); border-radius: 10px;
+      padding: 10px 22px; color: #e8d8ff; font-size: 0.76rem; cursor: pointer;
+      letter-spacing: 0.1em; text-transform: uppercase; font-family: inherit;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+    }
+    .flow-btn:hover:not(:disabled) { border-color: var(--purple); background: rgba(150,80,255,0.28); }
+    .flow-btn:active:not(:disabled) { transform: scale(0.97); }
+    .flow-btn:disabled { opacity: 0.28; cursor: not-allowed; }
+    .step-dots { display: flex; gap: 7px; flex: 1; justify-content: center; }
+    .step-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(200,150,255,0.2); transition: all 0.3s; }
+    .step-dot.done { background: rgba(199,125,255,0.45); }
+    .step-dot.active { background: var(--purple); box-shadow: 0 0 7px var(--purple); transform: scale(1.4); }
+
+    /* ── Tokenizer ── */
+    .token-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px; color: var(--text);
+      font-size: 0.92rem; font-family: inherit; resize: none;
+      outline: none; line-height: 1.5; transition: border-color 0.2s; margin-bottom: 14px;
+    }
+    .token-input::placeholder { color: var(--muted); }
+    .token-input:focus { border-color: rgba(199,125,255,0.5); }
+    .token-display {
+      min-height: 60px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      padding: 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: 10px;
+    }
+    .token-chip {
+      display: inline-flex; flex-direction: column; align-items: center;
+      padding: 4px 10px 3px; border-radius: 7px;
+      font: 0.82rem 'Courier New', monospace;
+      border: 1px solid transparent; cursor: default; transition: transform 0.15s;
+      user-select: none;
+    }
+    .token-chip:hover { transform: translateY(-2px); }
+    .token-id { font-size: 0.5rem; color: rgba(255,255,255,0.28); margin-top: 2px; letter-spacing: 0.04em; }
+    .tc-0 { background: rgba(199,125,255,0.14); border-color: rgba(199,125,255,0.3); color: #ddb8ff; }
+    .tc-1 { background: rgba(144,224,239,0.12); border-color: rgba(144,224,239,0.28); color: #aadeee; }
+    .tc-2 { background: rgba(128,255,180,0.12); border-color: rgba(128,255,180,0.28); color: #9af0c0; }
+    .tc-3 { background: rgba(255,107,157,0.12); border-color: rgba(255,107,157,0.28); color: #f090aa; }
+    .tc-4 { background: rgba(255,208,96,0.12); border-color: rgba(255,208,96,0.28); color: #e8c060; }
+    .tc-5 { background: rgba(150,200,255,0.12); border-color: rgba(150,200,255,0.28); color: #96c8f0; }
+    .token-meta { font-size: 0.7rem; color: var(--muted); margin-bottom: 12px; }
+    .token-count-badge {
+      display: inline-block; background: rgba(199,125,255,0.18); border: 1px solid rgba(199,125,255,0.3);
+      border-radius: 6px; padding: 2px 10px; font-size: 0.7rem; color: var(--purple); margin-left: 6px;
+    }
+    .info-box {
+      font-size: 0.72rem; color: var(--muted); line-height: 1.6; padding: 12px 16px;
+      background: rgba(0,0,0,0.2); border-radius: 8px; border-left: 2px solid rgba(199,125,255,0.3);
+    }
+
+    /* ── Prediction Engine ── */
+    .example-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .example-tab {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 18px; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .example-tab.active { border-color: var(--purple); color: var(--purple); background: rgba(199,125,255,0.1); }
+    .example-tab:hover:not(.active) { border-color: rgba(200,150,255,0.38); color: var(--text); }
+
+    .prompt-display {
+      font: 0.9rem 'Courier New', monospace; padding: 16px 20px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 20px; color: var(--cyan); min-height: 54px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    }
+    .prompt-word { color: var(--cyan); }
+    .prompt-sampled { color: var(--green); }
+    .prompt-cursor {
+      display: inline-block; width: 10px; height: 1.1em; background: var(--purple);
+      opacity: 0.7; vertical-align: middle; animation: blink 1s steps(1) infinite; flex-shrink: 0;
+    }
+    @keyframes blink { 0%,49% { opacity: 0.7; } 50%,100% { opacity: 0; } }
+
+    .prob-bars { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .prob-row { display: flex; align-items: center; gap: 12px; }
+    .prob-token { font: 0.8rem 'Courier New', monospace; color: var(--text); min-width: 90px; text-align: right; flex-shrink: 0; }
+    .prob-bar-wrap { flex: 1; height: 30px; background: rgba(255,255,255,0.04); border-radius: 6px; overflow: hidden; position: relative; }
+    .prob-bar {
+      height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 10px;
+      transition: width 0.4s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    .prob-pct { font-size: 0.72rem; color: rgba(255,255,255,0.75); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .prob-row.sampled .prob-bar-wrap { box-shadow: 0 0 14px rgba(128,255,180,0.3); border: 1px solid rgba(128,255,180,0.25); }
+    .prob-row.sampled .prob-bar { animation: sampledFlash 0.45s ease-out; }
+    @keyframes sampledFlash { 0% { filter: brightness(2.5); } 100% { filter: brightness(1); } }
+    .pb-0 { background: linear-gradient(90deg, rgba(199,125,255,0.55), rgba(199,125,255,0.28)); }
+    .pb-1 { background: linear-gradient(90deg, rgba(144,224,239,0.45), rgba(144,224,239,0.22)); }
+    .pb-2 { background: linear-gradient(90deg, rgba(128,255,180,0.38), rgba(128,255,180,0.18)); }
+    .pb-3 { background: linear-gradient(90deg, rgba(255,208,96,0.35), rgba(255,208,96,0.16)); }
+    .pb-4 { background: linear-gradient(90deg, rgba(255,107,157,0.3), rgba(255,107,157,0.14)); }
+
+    .temp-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+    .temp-label { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex-shrink: 0; }
+    .temp-slider {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 2px; outline: none; cursor: pointer;
+      background: linear-gradient(90deg, rgba(199,125,255,0.35), rgba(144,224,239,0.35));
+    }
+    .temp-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+      background: var(--purple); border: 2px solid rgba(255,255,255,0.18);
+      cursor: pointer; box-shadow: 0 0 8px rgba(199,125,255,0.5);
+    }
+    .temp-slider::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%; background: var(--purple);
+      border: 2px solid rgba(255,255,255,0.18); cursor: pointer;
+    }
+    .temp-value { font: 0.88rem 'Courier New', monospace; color: var(--purple); flex-shrink: 0; min-width: 34px; }
+
+    .sample-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+    .action-btn {
+      background: linear-gradient(135deg,rgba(150,80,255,0.25),rgba(80,40,180,0.25));
+      border: 1px solid rgba(200,150,255,0.4); border-radius: 10px;
+      padding: 10px 24px; color: #e8d8ff; font-size: 0.8rem; cursor: pointer;
+      letter-spacing: 0.1em; text-transform: uppercase; font-family: inherit; transition: all 0.2s;
+    }
+    .action-btn:hover { border-color: var(--purple); background: rgba(150,80,255,0.35); }
+    .action-btn:active { transform: scale(0.97); }
+    .action-btn.ghost { background: rgba(255,255,255,0.02); border-color: var(--border); }
+    .action-btn.ghost:hover { border-color: rgba(200,150,255,0.38); color: var(--text); }
+    .sample-result { font: 0.8rem 'Courier New', monospace; color: var(--green); padding: 8px 14px; background: rgba(128,255,180,0.08); border: 1px solid rgba(128,255,180,0.22); border-radius: 8px; }
+
+    /* ── Concepts ── */
+    .concepts-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap: 14px; }
+    .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; transition: all 0.2s; }
+    .concept-card:hover { border-color: rgba(200,150,255,0.38); background: rgba(255,255,255,0.06); }
+    .cc-icon { font-size: 1.4rem; margin-bottom: 10px; }
+    .cc-name { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--purple); margin-bottom: 8px; }
+    .cc-desc { font-size: 0.74rem; color: var(--muted); line-height: 1.6; }
+    .cc-desc code { font-family: 'Courier New', monospace; color: var(--cyan); font-size: 0.68rem; }
+
+    .back-link { text-align: center; padding: 40px 20px; font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; }
+    .back-link a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    .back-link a:hover { color: var(--purple); }
+
+    @media (max-width: 500px) {
+      .prob-token { min-width: 66px; font-size: 0.72rem; }
+      .actors .actor { flex: 0 0 70px; }
+      .actor-icon { width: 50px; height: 50px; font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="/">Playground</a>
+  <span class="nav-sep">›</span>
+  <span class="nav-title">How LLMs Work</span>
+</div>
+
+<div class="hero">
+  <h1>✦ HOW LLMs WORK ✦</h1>
+  <p>An interactive walkthrough of how a large language model turns your text into a response — from tokenization through transformer layers to next-token sampling.</p>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 01 · INFERENCE CYCLE
+══════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">01 · The Inference Cycle</div>
+  <p class="section-intro">Every time you send a message, the same pipeline runs. Step through it below.</p>
+
+  <div class="flow-stage" id="cycleStage">
+    <svg class="arrow-svg" id="cycleArrowSvg"></svg>
+    <div class="actors">
+      <div class="actor">
+        <div class="actor-icon" id="actor-user">👤</div>
+        <div class="actor-label">You<br>User</div>
+      </div>
+      <div class="actor">
+        <div class="actor-icon" id="actor-app">💻</div>
+        <div class="actor-label">Client<br>App</div>
+      </div>
+      <div class="actor">
+        <div class="actor-icon" id="actor-model">🧠</div>
+        <div class="actor-label">Model<br>GPU</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-info" id="cycleStepInfo">
+    <div class="step-num" id="cycleStepNum"></div>
+    <div class="step-name" id="cycleStepName">The Inference Cycle</div>
+    <div class="step-desc" id="cycleStepDesc">Press <strong style="color:var(--text)">Next</strong> to walk through how an LLM processes your message and generates a response — one token at a time.</div>
+  </div>
+
+  <div class="flow-controls">
+    <button class="flow-btn" id="cyclePrev" disabled>← Prev</button>
+    <div class="step-dots" id="cycleDots"></div>
+    <button class="flow-btn" id="cycleNext">Next →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 02 · TOKENIZATION
+══════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">02 · Tokenization Explorer</div>
+  <p class="section-intro">
+    LLMs don't read words — they read <strong style="color:var(--text)">tokens</strong>. Type anything below and see how text gets split into subword units. Common short words are usually one token; rare or long words split into pieces. Hover a chip to see its token ID.
+  </p>
+
+  <textarea class="token-input" id="tokenInput" rows="2"
+    placeholder="Type something… e.g. 'The tokenization of language is fascinating'"></textarea>
+
+  <div class="token-display" id="tokenDisplay">
+    <span style="color:var(--muted);font-size:0.78rem;">Tokens will appear here…</span>
+  </div>
+
+  <div class="token-meta" id="tokenMeta"></div>
+
+  <div class="info-box">
+    This is a simplified demonstration. Real tokenizers (like tiktoken for GPT models) use <strong style="color:var(--text)">byte-pair encoding (BPE)</strong> learned from large text corpora — the same subword sequences recur often enough to be worth giving their own ID. Token IDs shown here are illustrative.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 03 · PREDICTION ENGINE
+══════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">03 · The Prediction Engine</div>
+  <p class="section-intro">
+    After processing all input tokens, the model outputs a <strong style="color:var(--text)">probability distribution</strong> over its entire vocabulary for the next token. <strong style="color:var(--text)">Temperature</strong> reshapes that distribution before sampling. Try different settings below.
+  </p>
+
+  <div class="example-tabs" id="exampleTabs"></div>
+
+  <div class="prompt-display" id="promptDisplay"></div>
+
+  <div class="prob-bars" id="probBars"></div>
+
+  <div class="temp-row">
+    <span class="temp-label">Temp</span>
+    <input type="range" class="temp-slider" id="tempSlider" min="0.1" max="2.0" step="0.1" value="1.0">
+    <span class="temp-value" id="tempValue">1.0</span>
+  </div>
+
+  <div class="info-box" id="tempNote"></div>
+
+  <div class="sample-controls">
+    <button class="action-btn" id="sampleBtn">Sample Next Token</button>
+    <button class="action-btn ghost" id="greedyBtn">Greedy (Always Top)</button>
+    <button class="action-btn ghost" id="resetBtn">Reset</button>
+    <span class="sample-result" id="sampleResult" style="display:none;"></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 04 · KEY CONCEPTS
+══════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">04 · Key Concepts</div>
+  <div class="concepts-grid">
+    <div class="concept-card">
+      <div class="cc-icon">🔢</div>
+      <div class="cc-name">Tokens</div>
+      <div class="cc-desc">The atomic units LLMs process. Roughly ¾ of a word on average. GPT-4 has a vocabulary of ~100k tokens. The model only ever sees token IDs — never raw text.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">🎯</div>
+      <div class="cc-name">Attention</div>
+      <div class="cc-desc">The core transformer mechanism. Every token can "attend" to every other token in context, letting the model capture long-range relationships and meaning.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">📏</div>
+      <div class="cc-name">Context Window</div>
+      <div class="cc-desc">The max tokens the model can see at once. GPT-4 supports 128k. The model has no memory beyond the window — the full conversation history must fit inside it.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">🌡️</div>
+      <div class="cc-name">Temperature</div>
+      <div class="cc-desc">Controls randomness. Near <code>0</code> = always pick the most likely token (deterministic). Near <code>2</code> = nearly flat distribution, highly unpredictable output.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">🏋️</div>
+      <div class="cc-name">Parameters</div>
+      <div class="cc-desc">The weights learned during training. GPT-4 has an estimated ~1.8 trillion. These encode all the model's "knowledge" and are frozen at inference time.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">📋</div>
+      <div class="cc-name">System Prompt</div>
+      <div class="cc-desc">Instructions prepended before the conversation. Sets persona, constraints, and behavior. Invisible to the user but part of the model's full context on every turn.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">🔄</div>
+      <div class="cc-name">Autoregression</div>
+      <div class="cc-desc">The model generates one token at a time. Each sampled token is appended to the context, and the model runs again. This loop continues until an end-of-sequence token.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">📐</div>
+      <div class="cc-name">Embeddings</div>
+      <div class="cc-desc">Each token ID maps to a vector of thousands of numbers. These high-dimensional vectors are what actually flow through the transformer — not the token text.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">🎲</div>
+      <div class="cc-name">Softmax</div>
+      <div class="cc-desc">Converts the model's raw output scores (logits) into a valid probability distribution that sums to 1.0. Every token in the vocabulary gets a probability, however tiny.</div>
+    </div>
+  </div>
+</div>
+
+<div class="back-link"><a href="/">← Back to Playground</a></div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   SECTION 01 — INFERENCE CYCLE
+═══════════════════════════════════════════════════ */
+
+const STEPS = [
+  {
+    from: null, to: null, internal: null,
+    name: 'The Inference Cycle',
+    desc: 'Press <strong style="color:var(--text)">Next</strong> to walk through how an LLM processes your message and generates a response — one token at a time.',
+    code: null, packet: null,
+  },
+  {
+    from: 'user', to: 'app', internal: null,
+    name: '1 · You Send a Message',
+    desc: 'You type a message and press send. The client receives the raw text and begins preparing the full prompt to send to the model.',
+    code: '"What is the capital of France?"',
+    packet: 'user message',
+  },
+  {
+    from: null, to: null, internal: 'app',
+    name: '2 · Prompt Assembly',
+    desc: 'The app assembles the <strong style="color:var(--text)">full context</strong>: a system prompt (the model\'s instructions and persona) followed by the entire conversation history. The model has <em>no persistent memory</em> — it reads the full thread from scratch every single call.',
+    code: 'system: "You are a helpful assistant."\nuser:   "What is the capital of France?"',
+    packet: null,
+  },
+  {
+    from: null, to: null, internal: 'app',
+    name: '3 · Tokenization',
+    desc: 'The assembled text is split into <strong style="color:var(--text)">tokens</strong> — subword units — and each is mapped to an integer ID. The model never sees text directly. It only ever sees a sequence of numbers.',
+    code: '"What is the capital of France?"\n→ [3923, 374, 279, 6864, 315, 9822, 30]\n\n7 tokens.  "France" → 1 token.  "capital" → 1 token.',
+    packet: null,
+  },
+  {
+    from: 'app', to: 'model', internal: null,
+    name: '4 · API Call',
+    desc: 'The token sequence is sent to the model server over HTTPS — along with parameters like the model name, temperature, and max tokens. The server starts processing immediately.',
+    code: 'POST /v1/chat/completions\n{\n  model: "gpt-4o",\n  messages: [...],\n  temperature: 0.7,\n  stream: true\n}',
+    packet: '[3923, 374, 279, 6864…]',
+  },
+  {
+    from: null, to: null, internal: 'model',
+    name: '5 · Embedding Lookup',
+    desc: 'Each token ID is looked up in a learned <strong style="color:var(--text)">embedding table</strong>, mapping it to a dense vector of thousands of numbers. This is how discrete token IDs become continuous mathematical objects the transformer can operate on.',
+    code: '# token 3923 → a vector of 16,384 floats\nembedding = E[3923]   # shape: [16384]\n\n# all tokens are embedded in parallel\nx = E[tokens]          # shape: [7, 16384]',
+    packet: null,
+  },
+  {
+    from: null, to: null, internal: 'model',
+    name: '6 · Transformer Layers',
+    desc: 'The embedded vectors flow through ~96 transformer layers. In each layer, <strong style="color:var(--text)">self-attention</strong> lets every token gather weighted context from all other tokens — this is how the model understands relationships. A feedforward network then transforms each token independently.',
+    code: 'for layer in transformer.layers:\n    x = layer.attention(x)    # cross-token context\n    x = layer.feedforward(x)  # per-token transform\n\n# After 96 layers, each token vector is rich\n# with contextual meaning from the full sequence.',
+    packet: null,
+  },
+  {
+    from: null, to: null, internal: 'model',
+    name: '7 · Next-Token Prediction',
+    desc: 'After the final layer, the last token\'s vector is projected into a score for every token in the vocabulary. A <strong style="color:var(--text)">softmax</strong> turns these scores into a probability distribution — the model\'s estimate of what should come next.',
+    code: 'logits = output_proj(x[-1])   # shape: [vocab_size]\nprobs  = softmax(logits / T)  # temperature T\n\n# "Paris"  → 72.4%\n# "France" → 15.8%\n# "the"    →  5.3%\n# …and so on for all ~100k tokens',
+    packet: null,
+  },
+  {
+    from: 'model', to: 'app', internal: null,
+    name: '8 · Sampling & Streaming',
+    desc: 'A token is <strong style="color:var(--text)">sampled</strong> from the distribution and streamed back immediately as a Server-Sent Event. The app renders it character by character. The sampled token is then appended to the context, and the model runs again from step 6 — repeating until an end-of-sequence token or the token limit.',
+    code: '// Server-Sent Events\ndata: {"delta":{"content":"The"}}\ndata: {"delta":{"content":" capital"}}\ndata: {"delta":{"content":" of France is Paris."}}\ndata: [DONE]',
+    packet: '"The capital of France is Paris."',
+  },
+];
+
+let cycleIdx = 0;
+const totalSteps = STEPS.length - 1;
+const stage = document.getElementById('cycleStage');
+const arrowSvg = document.getElementById('cycleArrowSvg');
+
+// Build dots
+const dotsEl = document.getElementById('cycleDots');
+for (let i = 1; i <= totalSteps; i++) {
+  const d = document.createElement('div');
+  d.className = 'step-dot';
+  d.id = 'dot' + i;
+  dotsEl.appendChild(d);
+}
+
+function actorCenter(id) {
+  const el = document.getElementById('actor-' + id);
+  const sr = stage.getBoundingClientRect();
+  const r  = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2 - sr.left, y: r.top + r.height / 2 - sr.top };
+}
+
+function clearActors() {
+  ['user','app','model'].forEach(id => {
+    const el = document.getElementById('actor-' + id);
+    if (el) el.classList.remove('active','busy');
+  });
+}
+
+function drawArrow(a, b) {
+  const from = actorCenter(a), to = actorCenter(b);
+  const y = from.y + 34;
+  arrowSvg.innerHTML = '';
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1', from.x); line.setAttribute('y1', y);
+  line.setAttribute('x2', to.x);   line.setAttribute('y2', y);
+  line.setAttribute('stroke','rgba(199,125,255,0.4)');
+  line.setAttribute('stroke-width','1.5');
+  line.setAttribute('stroke-dasharray','5 4');
+  arrowSvg.appendChild(line);
+}
+
+function flyPacket(a, b, label) {
+  const from = actorCenter(a), to = actorCenter(b);
+  const y = from.y + 26;
+  const el = document.createElement('div');
+  el.className = 'packet-fly';
+  el.style.top = y + 'px';
+  el.innerHTML = '<div class="packet-dot"></div><div class="packet-lbl">' + label.replace(/</g,'&lt;') + '</div>';
+  stage.appendChild(el);
+  el.animate([
+    { left: from.x + 'px', opacity: 0 },
+    { left: from.x + 'px', opacity: 1, offset: 0.08 },
+    { left: to.x   + 'px', opacity: 1, offset: 0.92 },
+    { left: to.x   + 'px', opacity: 0 },
+  ], { duration: 820, easing: 'cubic-bezier(0.25,0.46,0.45,0.94)' }).onfinish = () => el.remove();
+}
+
+function renderStep(idx) {
+  const s = STEPS[idx];
+
+  document.getElementById('cycleStepNum').textContent  = idx === 0 ? '' : 'Step ' + idx + ' of ' + totalSteps;
+  document.getElementById('cycleStepName').textContent = s.name;
+  document.getElementById('cycleStepDesc').innerHTML   = s.desc;
+
+  const old = document.getElementById('cycleCode');
+  if (old) old.remove();
+  if (s.code) {
+    const pre = document.createElement('pre');
+    pre.id = 'cycleCode'; pre.className = 'step-code'; pre.textContent = s.code;
+    document.getElementById('cycleStepInfo').appendChild(pre);
+  }
+
+  for (let i = 1; i <= totalSteps; i++) {
+    document.getElementById('dot' + i).className =
+      'step-dot' + (i < idx ? ' done' : i === idx ? ' active' : '');
+  }
+
+  document.getElementById('cyclePrev').disabled = idx === 0;
+  const nxt = document.getElementById('cycleNext');
+  nxt.disabled = idx === totalSteps;
+  nxt.textContent = idx === totalSteps ? 'Done ✓' : 'Next →';
+
+  clearActors();
+  arrowSvg.innerHTML = '';
+
+  if (s.from && s.to) {
+    document.getElementById('actor-' + s.from).classList.add('active');
+    drawArrow(s.from, s.to);
+    if (s.packet) flyPacket(s.from, s.to, s.packet);
+    setTimeout(() => {
+      const t = document.getElementById('actor-' + s.to);
+      if (t) t.classList.add('active');
+    }, 500);
+  } else if (s.internal) {
+    document.getElementById('actor-' + s.internal).classList.add('busy');
+  }
+}
+
+document.getElementById('cyclePrev').addEventListener('click', () => {
+  if (cycleIdx > 0) renderStep(--cycleIdx);
+});
+document.getElementById('cycleNext').addEventListener('click', () => {
+  if (cycleIdx < totalSteps) renderStep(++cycleIdx);
+});
+
+renderStep(0);
+
+
+/* ═══════════════════════════════════════════════════
+   SECTION 02 — TOKENIZER
+═══════════════════════════════════════════════════ */
+
+const COMMON = new Set([
+  'the','a','an','in','on','at','to','for','of','and','or','but','is','are','was',
+  'were','be','been','have','has','had','do','does','did','will','would','could',
+  'should','may','might','can','not','no','yes','it','its','i','we','you','he',
+  'she','they','my','your','his','her','our','their','this','that','these','those',
+  'what','which','who','how','when','where','why','with','from','by','as','up',
+  'if','about','into','all','one','two','three','new','old','good','great','first',
+  'last','most','only','also','just','even','well','back','here','then','now',
+  'way','day','man','world','life','work','time','year','make','take','come','see',
+  'know','think','say','get','give','look','want','use','find','tell','ask',
+  'large','small','high','low','long','short','help','need','like','love','very',
+  'people','place','thing','name','word','hand','part','case','week','water',
+  'room','area','money','story','fact','month','right','study','book','home',
+  'number','point','system','company','question','program','capital','city',
+  'country','language','science','history','technology','neural','model','token',
+  'text','data','input','output','layer','human','computer','machine','learning',
+  'intelligence','artificial','each','some','other','than','more','over','such',
+  'much','many','between','different','same','never','always','often','every',
+  'still','own','us','off','out','open','seem','run','keep','read','stop','let',
+  'feel','call','show','move','live','play','write','set','put','hold','bring',
+  'mean','change','lead','follow','begin','end','start','continue','build','stay',
+  'fall','pass','include','consider','appear','provide','create','serve','form',
+  'next','early','important','public','real','free','true','best','able','near',
+  'both','through','while','before','after','during','without','local','white',
+  'black','red','blue','green','hot','cold','fast','slow','hard','easy','big',
+  'little','few','paris','france','london','english','american','google',
+  'interesting','fascinating','beautiful','wonderful','amazing','incredible',
+  'tokenization','language','sentence','paragraph','example','simple','complex',
+]);
+
+function hashStr(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) & 0xffffffff;
+  return (Math.abs(h) % 89000) + 10000;
+}
+
+function splitWord(w) {
+  if (COMMON.has(w.toLowerCase()) || w.length <= 4) return [w];
+  if (w.length <= 7) {
+    const m = Math.ceil(w.length * 0.55);
+    return [w.slice(0, m), w.slice(m)];
+  }
+  const a = Math.ceil(w.length * 0.36), b = Math.ceil(w.length * 0.65);
+  return [w.slice(0, a), w.slice(a, b), w.slice(b)];
+}
+
+function tokenize(text) {
+  const result = [];
+  const words = text.split(/(\s+)/);
+  let ci = 0;
+  for (const w of words) {
+    if (!w || /^\s+$/.test(w)) continue;
+    const chunks = w.match(/[a-zA-Z\u2019\u2018']+|[\d]+|[^\w\s]/g) || [w];
+    for (const chunk of chunks) {
+      if (/^[a-zA-Z]/.test(chunk)) {
+        splitWord(chunk).forEach(p => {
+          result.push({ text: p, color: ci++ % 6, id: hashStr(p.toLowerCase()) });
+        });
+      } else if (/^\d+$/.test(chunk)) {
+        if (chunk.length <= 4) {
+          result.push({ text: chunk, color: ci++ % 6, id: hashStr(chunk) });
+        } else {
+          for (let k = 0; k < chunk.length; k += 3) {
+            const p = chunk.slice(k, k + 3);
+            result.push({ text: p, color: ci++ % 6, id: hashStr(p) });
+          }
+        }
+      } else {
+        result.push({ text: chunk, color: ci++ % 6, id: hashStr(chunk) });
+      }
+    }
+  }
+  return result;
+}
+
+function renderTokens() {
+  const text = document.getElementById('tokenInput').value;
+  const tokens = tokenize(text);
+  const display = document.getElementById('tokenDisplay');
+  const meta    = document.getElementById('tokenMeta');
+
+  if (!tokens.length) {
+    display.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">Tokens will appear here…</span>';
+    meta.innerHTML = '';
+    return;
+  }
+
+  display.innerHTML = tokens.map(t =>
+    `<div class="token-chip tc-${t.color}" title="Token ID: ${t.id}">` +
+      t.text.replace(/</g,'&lt;') +
+      `<span class="token-id">${t.id}</span>` +
+    `</div>`
+  ).join('');
+
+  meta.innerHTML =
+    `<span style="color:var(--muted)">${text.length} chars →</span>` +
+    `<span class="token-count-badge">${tokens.length} token${tokens.length !== 1 ? 's' : ''}</span>`;
+}
+
+document.getElementById('tokenInput').addEventListener('input', renderTokens);
+document.getElementById('tokenInput').value = 'The tokenization of language is fascinating';
+renderTokens();
+
+
+/* ═══════════════════════════════════════════════════
+   SECTION 03 — PREDICTION ENGINE
+═══════════════════════════════════════════════════ */
+
+const EXAMPLES = [
+  {
+    label: 'Geography',
+    prompt: ['The', 'capital', 'of', 'France', 'is'],
+    tokens: [
+      { text: 'Paris',   logit: 2.5 },
+      { text: 'France',  logit: 0.9 },
+      { text: 'the',     logit: -0.3 },
+      { text: 'located', logit: -0.7 },
+      { text: 'a',       logit: -1.0 },
+    ],
+  },
+  {
+    label: 'Instructions',
+    prompt: ['To', 'make', 'a', 'cup', 'of', 'tea,', 'first'],
+    tokens: [
+      { text: 'boil',    logit: 2.1 },
+      { text: 'add',     logit: 0.9 },
+      { text: 'heat',    logit: 0.3 },
+      { text: 'prepare', logit: -0.4 },
+      { text: 'get',     logit: -0.9 },
+    ],
+  },
+  {
+    label: 'Philosophy',
+    prompt: ['The', 'meaning', 'of', 'life', 'is'],
+    tokens: [
+      { text: 'to',      logit: 1.9 },
+      { text: 'a',       logit: 1.3 },
+      { text: 'not',     logit: 0.5 },
+      { text: '42',      logit: 0.1 },
+      { text: 'unknown', logit: -0.4 },
+    ],
+  },
+  {
+    label: 'Code',
+    prompt: ['function', 'greet(name)', '{'],
+    tokens: [
+      { text: 'return',  logit: 2.3 },
+      { text: 'console', logit: 1.1 },
+      { text: 'const',   logit: 0.2 },
+      { text: 'let',     logit: 0.0 },
+      { text: 'if',      logit: -0.6 },
+    ],
+  },
+];
+
+let activeEx = 0;
+let sampledHistory = []; // sampled tokens appended to the prompt
+let lastSampled = -1;
+
+function softmax(logits, temp) {
+  const scaled = logits.map(l => l / temp);
+  const max = Math.max(...scaled);
+  const exps = scaled.map(l => Math.exp(l - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
+}
+
+function buildPromptDisplay() {
+  const ex = EXAMPLES[activeEx];
+  const el = document.getElementById('promptDisplay');
+  const base = ex.prompt.map(w => `<span class="prompt-word">${w.replace(/</g,'&lt;')}</span>`).join(' ');
+  const hist = sampledHistory.map(w => `<span class="prompt-sampled">${w.replace(/</g,'&lt;')}</span>`).join(' ');
+  el.innerHTML = base + (hist ? ' ' + hist : '') + ' <span class="prompt-cursor"></span>';
+}
+
+function buildTabs() {
+  const c = document.getElementById('exampleTabs');
+  EXAMPLES.forEach((ex, i) => {
+    const b = document.createElement('button');
+    b.className = 'example-tab' + (i === 0 ? ' active' : '');
+    b.textContent = ex.label;
+    b.addEventListener('click', () => {
+      activeEx = i;
+      sampledHistory = [];
+      lastSampled = -1;
+      document.querySelectorAll('.example-tab').forEach((t, j) => t.classList.toggle('active', j === i));
+      document.getElementById('sampleResult').style.display = 'none';
+      buildPromptDisplay();
+      renderBars();
+    });
+    c.appendChild(b);
+  });
+}
+
+function renderBars(sampledIdx = -1) {
+  const ex   = EXAMPLES[activeEx];
+  const temp = parseFloat(document.getElementById('tempSlider').value);
+  const probs = softmax(ex.tokens.map(t => t.logit), temp);
+  const c = document.getElementById('probBars');
+  c.innerHTML = '';
+  ex.tokens.forEach((t, i) => {
+    const pct = (probs[i] * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'prob-row' + (i === sampledIdx ? ' sampled' : '');
+    row.innerHTML =
+      `<div class="prob-token">"${t.text}"</div>` +
+      `<div class="prob-bar-wrap">` +
+        `<div class="prob-bar pb-${i}" style="width:${pct}%">` +
+          `<span class="prob-pct">${pct}%</span>` +
+        `</div>` +
+      `</div>`;
+    c.appendChild(row);
+  });
+}
+
+function getTempNote(t) {
+  if (t < 0.3) return `Temperature ${t.toFixed(1)}: near-deterministic — the top token almost always wins. Virtually no variation between runs.`;
+  if (t < 0.7) return `Temperature ${t.toFixed(1)}: conservative sampling — strongly prefers the highest-probability tokens. Focused and consistent.`;
+  if (t < 1.1) return `Temperature ${t.toFixed(1)}: standard sampling — close to the model's raw predicted probabilities.`;
+  if (t < 1.6) return `Temperature ${t.toFixed(1)}: creative sampling — lower-probability tokens get more chances. More variety, less predictability.`;
+  return `Temperature ${t.toFixed(1)}: high randomness — the distribution is nearly flat. Almost any token could be chosen.`;
+}
+
+document.getElementById('tempSlider').addEventListener('input', function () {
+  const t = parseFloat(this.value);
+  document.getElementById('tempValue').textContent = t.toFixed(1);
+  document.getElementById('tempNote').textContent = getTempNote(t);
+  renderBars(lastSampled);
+});
+
+document.getElementById('sampleBtn').addEventListener('click', () => {
+  const ex   = EXAMPLES[activeEx];
+  const temp = parseFloat(document.getElementById('tempSlider').value);
+  const probs = softmax(ex.tokens.map(t => t.logit), temp);
+  let r = Math.random(), chosen = probs.length - 1;
+  for (let i = 0; i < probs.length; i++) { r -= probs[i]; if (r <= 0) { chosen = i; break; } }
+  lastSampled = chosen;
+  sampledHistory.push(ex.tokens[chosen].text);
+  renderBars(chosen);
+  buildPromptDisplay();
+  const res = document.getElementById('sampleResult');
+  res.textContent = '→ sampled: "' + ex.tokens[chosen].text + '"';
+  res.style.display = 'inline-block';
+});
+
+document.getElementById('greedyBtn').addEventListener('click', () => {
+  const ex = EXAMPLES[activeEx];
+  lastSampled = 0;
+  sampledHistory.push(ex.tokens[0].text);
+  renderBars(0);
+  buildPromptDisplay();
+  const res = document.getElementById('sampleResult');
+  res.textContent = '→ greedy: "' + ex.tokens[0].text + '"';
+  res.style.display = 'inline-block';
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  sampledHistory = [];
+  lastSampled = -1;
+  document.getElementById('sampleResult').style.display = 'none';
+  buildPromptDisplay();
+  renderBars();
+});
+
+// Init
+buildTabs();
+buildPromptDisplay();
+document.getElementById('tempNote').textContent = getTempNote(1.0);
+renderBars();
+</script>
+</body>
+</html>
