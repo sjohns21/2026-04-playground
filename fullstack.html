@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Full Stack Demo · Steve Johnson</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --purple: #c77dff; --cyan: #90e0ef; --green: #80ffb4;
+      --gold: #ffd060; --pink: #ff6b9d;
+      --text: #ddd0ff; --muted: rgba(200,180,255,0.45);
+      --border: rgba(200,150,255,0.18); --surface: rgba(255,255,255,0.04);
+    }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #07071a 0%, #030308 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text); overflow-x: hidden;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 24px;
+      background: rgba(3,3,8,0.88); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav a { color: var(--muted); text-decoration: none; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.2s; }
+    .nav a:hover { color: var(--purple); }
+    .nav-sep { color: rgba(200,150,255,0.22); font-size: 0.8rem; }
+    .nav-cur { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--purple); }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 860px; margin: 0 auto;
+      padding: 56px 24px 40px;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      font-size: 0.62rem; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px;
+    }
+    .hero-title {
+      font-size: clamp(2rem, 7vw, 3.4rem);
+      font-weight: 200; letter-spacing: 0.18em;
+      background: linear-gradient(90deg, #c77dff, #90e0ef, #80ffb4, #c77dff);
+      background-size: 200%;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: gradshift 6s ease infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes gradshift { 0%,100%{background-position:0%} 50%{background-position:100%} }
+    .hero-sub {
+      font-size: 0.82rem; color: var(--muted); line-height: 1.7;
+      max-width: 540px; margin: 0 auto 32px;
+    }
+    .hero-chips {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    }
+    .chip {
+      font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 5px 14px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    }
+
+    /* ── Section layout ── */
+    .demo-section { max-width: 900px; margin: 0 auto 60px; padding: 0 20px; }
+    .section-label {
+      font-size: 0.6rem; letter-spacing: 0.26em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .section-badge {
+      font-size: 0.56rem; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 20px; font-weight: 700;
+      margin-left: 8px; flex-shrink: 0;
+    }
+    .b-purple { background: rgba(199,125,255,0.12); border: 1px solid rgba(199,125,255,0.35); color: var(--purple); }
+    .b-cyan   { background: rgba(144,224,239,0.10); border: 1px solid rgba(144,224,239,0.35); color: var(--cyan); }
+    .b-green  { background: rgba(128,255,180,0.10); border: 1px solid rgba(128,255,180,0.35); color: var(--green); }
+    .b-gold   { background: rgba(255,208,96,0.10);  border: 1px solid rgba(255,208,96,0.35);  color: var(--gold); }
+    .b-pink   { background: rgba(255,107,157,0.10); border: 1px solid rgba(255,107,157,0.4);  color: var(--pink); }
+
+    /* ── Module cards ── */
+    .module {
+      background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+    }
+    .module-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+    .module-title { font-size: 0.78rem; font-weight: 500; letter-spacing: 0.06em; }
+    .module-hint { font-size: 0.62rem; color: var(--muted); }
+    .module-body { padding: 20px 22px; }
+
+    /* ═══════════════════════════════════════
+       MODULE 1 — KANBAN SPRINT BOARD
+    ═══════════════════════════════════════ */
+    .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media(max-width:640px) { .kanban { grid-template-columns: 1fr; } }
+    .kb-col {
+      background: rgba(0,0,0,0.28); border-radius: 14px;
+      border: 1px solid rgba(200,150,255,0.1); overflow: hidden;
+    }
+    .kb-col-head {
+      padding: 10px 14px; font-size: 0.62rem; letter-spacing: 0.16em;
+      text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;
+    }
+    .kb-col-head.backlog  { color: var(--muted); }
+    .kb-col-head.building { color: var(--cyan); }
+    .kb-col-head.shipped  { color: var(--green); }
+    .kb-count {
+      font-size: 0.58rem; padding: 2px 8px; border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+    }
+    .kb-cards { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+    .kb-card {
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; cursor: pointer;
+      transition: all 0.18s; position: relative; user-select: none;
+    }
+    .kb-card:hover { background: rgba(199,125,255,0.07); border-color: rgba(199,125,255,0.3); transform: translateY(-1px); }
+    .kb-card-title { font-size: 0.78rem; line-height: 1.4; margin-bottom: 6px; }
+    .kb-card-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .kb-tag {
+      font-size: 0.52rem; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 2px 7px; border-radius: 10px;
+    }
+    .kb-arrow {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      font-size: 0.7rem; color: rgba(199,125,255,0.3);
+      transition: color 0.2s, right 0.2s; pointer-events: none;
+    }
+    .kb-card:hover .kb-arrow { color: var(--purple); right: 8px; }
+    .kb-card.shipped .kb-arrow { display: none; }
+    .kb-add-wrap { padding: 8px; }
+    .kb-add {
+      width: 100%; padding: 8px; border-radius: 10px;
+      background: rgba(255,255,255,0.03); border: 1px dashed rgba(200,150,255,0.2);
+      color: var(--muted); font-size: 0.7rem; cursor: pointer; text-align: center;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .kb-add:hover { border-color: rgba(199,125,255,0.4); color: var(--purple); background: rgba(199,125,255,0.04); }
+    .kb-input-wrap { padding: 8px; display: none; }
+    .kb-input {
+      width: 100%; padding: 8px 10px; border-radius: 8px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(199,125,255,0.3);
+      color: var(--text); font-size: 0.78rem; font-family: inherit; outline: none;
+      margin-bottom: 6px;
+    }
+    .kb-input::placeholder { color: var(--muted); }
+    .kb-input-row { display: flex; gap: 6px; }
+    .btn-sm {
+      padding: 5px 12px; border-radius: 8px; font-size: 0.7rem;
+      border: none; cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .btn-primary { background: rgba(199,125,255,0.18); color: var(--purple); border: 1px solid rgba(199,125,255,0.3); }
+    .btn-primary:hover { background: rgba(199,125,255,0.28); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: var(--text); }
+
+    /* ═══════════════════════════════════════
+       MODULE 2 — CRUD USER TABLE
+    ═══════════════════════════════════════ */
+    .user-table { width: 100%; }
+    .user-table-head {
+      display: grid; grid-template-columns: 1fr 120px 90px 36px;
+      gap: 12px; padding: 6px 12px; margin-bottom: 4px;
+      font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+    }
+    .user-rows { display: flex; flex-direction: column; gap: 4px; }
+    .user-row {
+      display: grid; grid-template-columns: 1fr 120px 90px 36px;
+      gap: 12px; align-items: center;
+      padding: 10px 12px; border-radius: 10px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      transition: border-color 0.2s;
+      animation: rowIn 0.2s ease;
+    }
+    @keyframes rowIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+    .user-row:hover { border-color: rgba(199,125,255,0.25); }
+    .user-name { font-size: 0.82rem; }
+    .user-role { font-size: 0.7rem; color: var(--muted); }
+    .status-dot {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.65rem; color: var(--muted);
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dot-active { background: var(--green); box-shadow: 0 0 5px rgba(128,255,180,0.5); }
+    .dot-away   { background: var(--gold); }
+    .dot-off    { background: rgba(200,180,255,0.2); }
+    .del-btn {
+      width: 28px; height: 28px; border-radius: 8px; border: none;
+      background: rgba(255,107,157,0.08); color: rgba(255,107,157,0.4);
+      cursor: pointer; font-size: 0.9rem; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .del-btn:hover { background: rgba(255,107,157,0.18); color: var(--pink); }
+    .add-user-row {
+      display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;
+    }
+    .add-user-row input, .add-user-row select {
+      flex: 1; min-width: 100px; padding: 8px 12px; border-radius: 8px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(199,125,255,0.2);
+      color: var(--text); font-size: 0.78rem; font-family: inherit; outline: none;
+      transition: border-color 0.2s;
+    }
+    .add-user-row input:focus, .add-user-row select:focus { border-color: rgba(199,125,255,0.4); }
+    .add-user-row input::placeholder { color: var(--muted); }
+    .add-user-row select option { background: #0d0d1a; }
+    .btn-add-user {
+      padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer;
+      background: rgba(144,224,239,0.12); color: var(--cyan);
+      border: 1px solid rgba(144,224,239,0.28); font-size: 0.75rem;
+      font-family: inherit; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-add-user:hover { background: rgba(144,224,239,0.2); }
+    .empty-state { text-align: center; padding: 20px; color: var(--muted); font-size: 0.75rem; }
+
+    /* ═══════════════════════════════════════
+       MODULE 3 — AI CHAT
+    ═══════════════════════════════════════ */
+    .ai-messages {
+      max-height: 300px; overflow-y: auto; display: flex;
+      flex-direction: column; gap: 10px; margin-bottom: 14px;
+      padding-right: 4px;
+    }
+    .ai-messages::-webkit-scrollbar { width: 3px; }
+    .ai-messages::-webkit-scrollbar-track { background: transparent; }
+    .ai-messages::-webkit-scrollbar-thumb { background: rgba(199,125,255,0.2); border-radius: 2px; }
+    .ai-msg { display: flex; flex-direction: column; gap: 3px; max-width: 88%; }
+    .ai-msg.user { align-self: flex-end; align-items: flex-end; }
+    .ai-msg.bot  { align-self: flex-start; align-items: flex-start; }
+    .ai-label { font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .ai-bubble {
+      padding: 10px 14px; border-radius: 12px; font-size: 0.82rem; line-height: 1.6;
+    }
+    .ai-msg.user .ai-bubble { background: rgba(199,125,255,0.12); border: 1px solid rgba(199,125,255,0.22); }
+    .ai-msg.bot  .ai-bubble { background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+    .ai-typing { display: flex; gap: 4px; align-items: center; padding: 10px 14px; }
+    .ai-typing span {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+      animation: blink 1.2s ease infinite;
+    }
+    .ai-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .ai-typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+    .ai-input-row { display: flex; gap: 8px; }
+    .ai-input {
+      flex: 1; padding: 10px 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(128,255,180,0.2);
+      color: var(--text); font-size: 0.82rem; font-family: inherit;
+      outline: none; transition: border-color 0.2s;
+    }
+    .ai-input:focus { border-color: rgba(128,255,180,0.4); }
+    .ai-input::placeholder { color: var(--muted); }
+    .ai-send {
+      padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer;
+      background: rgba(128,255,180,0.12); color: var(--green);
+      border: 1px solid rgba(128,255,180,0.3); font-size: 0.78rem;
+      font-family: inherit; transition: all 0.2s;
+    }
+    .ai-send:hover:not(:disabled) { background: rgba(128,255,180,0.2); }
+    .ai-send:disabled { opacity: 0.45; cursor: not-allowed; }
+    .ai-system-note { font-size: 0.62rem; color: var(--muted); margin-top: 8px; text-align: center; }
+
+    /* ═══════════════════════════════════════
+       MODULE 4 — METRICS DASHBOARD
+    ═══════════════════════════════════════ */
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
+    }
+    @media(max-width:580px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+    .metric-card {
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px; text-align: center;
+    }
+    .metric-num {
+      font-size: clamp(1.3rem, 3.5vw, 1.8rem); font-weight: 200; line-height: 1;
+      background: linear-gradient(135deg, #c77dff, #90e0ef);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .metric-label { font-size: 0.56rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
+    .metric-change { font-size: 0.62rem; color: var(--green); margin-top: 3px; }
+    .chart-container {
+      background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    #metricsCanvas { display: block; width: 100%; }
+    .chart-bottom {
+      padding: 10px 16px; border-top: 1px solid rgba(200,150,255,0.08);
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .chart-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.6rem; color: var(--muted); }
+    .cl-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ═══════════════════════════════════════
+       MODULE 5 — STACK ARCHITECTURE
+    ═══════════════════════════════════════ */
+    .arch-wrap { padding: 8px 0; }
+    .arch-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; flex-wrap: wrap; margin-bottom: 0;
+    }
+    .arch-node {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 6px; padding: 16px 20px; border-radius: 14px;
+      border: 1px solid var(--border); background: var(--surface);
+      text-align: center; min-width: 100px; transition: all 0.25s;
+      cursor: default;
+    }
+    .arch-node:hover { transform: translateY(-3px); }
+    .arch-icon { font-size: 1.3rem; line-height: 1; }
+    .arch-name { font-size: 0.72rem; font-weight: 500; }
+    .arch-tech { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.06em; }
+    .arch-node.client   { border-color: rgba(199,125,255,0.35); }
+    .arch-node.client:hover { box-shadow: 0 0 20px rgba(199,125,255,0.15); }
+    .arch-node.api      { border-color: rgba(144,224,239,0.35); }
+    .arch-node.api:hover { box-shadow: 0 0 20px rgba(144,224,239,0.12); }
+    .arch-node.db       { border-color: rgba(128,255,180,0.35); }
+    .arch-node.db:hover { box-shadow: 0 0 20px rgba(128,255,180,0.12); }
+    .arch-node.ai-node  { border-color: rgba(255,208,96,0.35); }
+    .arch-node.ai-node:hover { box-shadow: 0 0 20px rgba(255,208,96,0.12); }
+    .arch-node.auth     { border-color: rgba(255,107,157,0.35); }
+    .arch-node.auth:hover { box-shadow: 0 0 20px rgba(255,107,157,0.12); }
+    .arch-connector {
+      width: 36px; height: 2px; position: relative; flex-shrink: 0;
+      display: flex; align-items: center;
+    }
+    .arch-connector::before {
+      content: ''; position: absolute; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--border), rgba(199,125,255,0.3));
+    }
+    .arch-connector::after { content: '▸'; color: rgba(199,125,255,0.4); position: absolute; right: -4px; font-size: 0.7rem; }
+    .arch-main { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; margin-bottom: 20px; }
+    .arch-sub {
+      display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+      position: relative; padding-top: 16px;
+    }
+    .arch-sub::before {
+      content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 1px; height: 16px; background: rgba(199,125,255,0.2);
+    }
+    .arch-sub-label {
+      position: absolute; bottom: -26px; width: 100%;
+      text-align: center; font-size: 0.55rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: rgba(200,180,255,0.25);
+    }
+    .arch-sub-inner { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .flow-desc { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+    .flow-item {
+      background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+    }
+    .flow-num { font-size: 0.62rem; color: var(--muted); margin-bottom: 4px; }
+    .flow-title { font-size: 0.78rem; font-weight: 500; margin-bottom: 4px; }
+    .flow-text { font-size: 0.68rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Footer ── */
+    .footer { text-align: center; padding: 36px 20px 60px; }
+    .footer a { color: var(--muted); text-decoration: none; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.2s; }
+    .footer a:hover { color: var(--purple); }
+
+    /* ── Pulse animation on arch nodes ── */
+    @keyframes pulse-border {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav class="nav">
+  <a href="/">Playground</a>
+  <span class="nav-sep">/</span>
+  <span class="nav-cur">Full Stack Demo</span>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-eyebrow">Interactive Demo</div>
+  <h1 class="hero-title">Full Stack Product</h1>
+  <p class="hero-sub">
+    Nine years building products end to end — from database schema to deployed UI.
+    Here's a live look at the layers I work across every day.
+  </p>
+  <div class="hero-chips">
+    <span class="chip">TypeScript · React · Next.js</span>
+    <span class="chip">Node.js · REST APIs</span>
+    <span class="chip">PostgreSQL · Supabase</span>
+    <span class="chip">AI / LLM Integration</span>
+    <span class="chip">Mobile · Ionic</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODULE 1 — KANBAN SPRINT BOARD
+═══════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="section-label">
+    01 — Sprint Board
+    <span class="section-badge b-purple">Frontend · State</span>
+  </div>
+  <div class="module">
+    <div class="module-header">
+      <span class="module-title">Product Backlog</span>
+      <span class="module-hint">Click a card to advance it →</span>
+    </div>
+    <div class="module-body">
+      <div class="kanban">
+        <!-- Backlog -->
+        <div class="kb-col" id="col-backlog">
+          <div class="kb-col-head backlog">Backlog <span class="kb-count" id="cnt-backlog">0</span></div>
+          <div class="kb-cards" id="cards-backlog"></div>
+          <div class="kb-add-wrap">
+            <button class="kb-add" onclick="showKbInput()">+ Add card</button>
+            <div class="kb-input-wrap" id="kb-input-wrap">
+              <input class="kb-input" id="kb-input" placeholder="Task title…" />
+              <div class="kb-input-row">
+                <button class="btn-sm btn-primary" onclick="addKbCard()">Add</button>
+                <button class="btn-sm btn-ghost" onclick="hideKbInput()">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Building -->
+        <div class="kb-col" id="col-building">
+          <div class="kb-col-head building">Building <span class="kb-count" id="cnt-building">0</span></div>
+          <div class="kb-cards" id="cards-building"></div>
+        </div>
+        <!-- Shipped -->
+        <div class="kb-col" id="col-shipped">
+          <div class="kb-col-head shipped">Shipped <span class="kb-count" id="cnt-shipped">0</span></div>
+          <div class="kb-cards" id="cards-shipped"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODULE 2 — USER MANAGEMENT (CRUD)
+═══════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="section-label">
+    02 — User Management
+    <span class="section-badge b-cyan">Backend · CRUD · Database</span>
+  </div>
+  <div class="module">
+    <div class="module-header">
+      <span class="module-title">Team Members</span>
+      <span class="module-hint">Add or remove records</span>
+    </div>
+    <div class="module-body">
+      <div class="user-table-head">
+        <span>Name</span><span>Role</span><span>Status</span><span></span>
+      </div>
+      <div class="user-rows" id="user-rows"></div>
+      <div id="user-empty" class="empty-state" style="display:none">No team members yet.</div>
+      <div class="add-user-row">
+        <input id="u-name" placeholder="Name" />
+        <input id="u-role" placeholder="Role" />
+        <select id="u-status">
+          <option value="active">Active</option>
+          <option value="away">Away</option>
+          <option value="offline">Offline</option>
+        </select>
+        <button class="btn-add-user" onclick="addUser()">Add Member</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODULE 3 — AI INTEGRATION
+═══════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="section-label">
+    03 — AI Integration
+    <span class="section-badge b-green">LLM · API · Streaming</span>
+  </div>
+  <div class="module">
+    <div class="module-header">
+      <span class="module-title">Product Assistant</span>
+      <span class="module-hint">Ask anything about building products</span>
+    </div>
+    <div class="module-body">
+      <div class="ai-messages" id="ai-messages"></div>
+      <div class="ai-input-row">
+        <input class="ai-input" id="ai-input"
+          placeholder="Ask about architecture, stack choices, shipping product…"
+          onkeydown="if(event.key==='Enter')sendAiMsg()" />
+        <button class="ai-send" id="ai-send-btn" onclick="sendAiMsg()">Send</button>
+      </div>
+      <div class="ai-system-note">Powered by Llama 3.2 via Groq · /chat-api</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODULE 4 — METRICS DASHBOARD
+═══════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="section-label">
+    04 — Analytics Dashboard
+    <span class="section-badge b-gold">Data Viz · Canvas · Real-time</span>
+  </div>
+  <div class="module">
+    <div class="module-header">
+      <span class="module-title">Growth Overview</span>
+      <span class="module-hint">Composite across YourStory, befluent, Bosmos</span>
+    </div>
+    <div class="module-body">
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-num" id="m-mau">0</div>
+          <div class="metric-label">Peak MAU</div>
+          <div class="metric-change">↑ 14K+</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-num" id="m-rev">$0</div>
+          <div class="metric-label">Revenue / ARR</div>
+          <div class="metric-change">↑ $190K+</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-num" id="m-co">0</div>
+          <div class="metric-label">Companies</div>
+          <div class="metric-change">6 total</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-num" id="m-yr">0</div>
+          <div class="metric-label">Years Building</div>
+          <div class="metric-change">Since 2016</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="metricsCanvas"></canvas>
+        <div class="chart-bottom">
+          <div class="chart-legend-item"><div class="cl-dot" style="background:#c77dff"></div> MAU growth</div>
+          <div class="chart-legend-item"><div class="cl-dot" style="background:#90e0ef"></div> Revenue milestones</div>
+          <div class="chart-legend-item"><div class="cl-dot" style="background:#ffd060"></div> YC-backed periods</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODULE 5 — STACK ARCHITECTURE
+═══════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="section-label">
+    05 — Stack Architecture
+    <span class="section-badge b-pink">System Design · Infrastructure</span>
+  </div>
+  <div class="module">
+    <div class="module-header">
+      <span class="module-title">How It All Connects</span>
+      <span class="module-hint">Hover to explore each layer</span>
+    </div>
+    <div class="module-body">
+      <div class="arch-wrap">
+        <!-- Main pipeline -->
+        <div class="arch-main">
+          <div class="arch-node client">
+            <div class="arch-icon">🖥️</div>
+            <div class="arch-name">Client</div>
+            <div class="arch-tech">React · Next.js · Ionic</div>
+          </div>
+          <div class="arch-connector"></div>
+          <div class="arch-node api">
+            <div class="arch-icon">⚡</div>
+            <div class="arch-name">API Layer</div>
+            <div class="arch-tech">Node.js · REST · Edge</div>
+          </div>
+          <div class="arch-connector"></div>
+          <div class="arch-node db">
+            <div class="arch-icon">🗄️</div>
+            <div class="arch-name">Database</div>
+            <div class="arch-tech">PostgreSQL · Supabase</div>
+          </div>
+        </div>
+        <!-- Supporting services -->
+        <div class="arch-sub">
+          <div class="arch-sub-inner">
+            <div class="arch-node ai-node">
+              <div class="arch-icon">🤖</div>
+              <div class="arch-name">AI / LLM</div>
+              <div class="arch-tech">Claude · Groq · OpenAI</div>
+            </div>
+            <div class="arch-node auth">
+              <div class="arch-icon">🔐</div>
+              <div class="arch-name">Auth</div>
+              <div class="arch-tech">Supabase Auth · JWT · OAuth</div>
+            </div>
+            <div class="arch-node" style="border-color:rgba(144,224,239,0.25)">
+              <div class="arch-icon">📦</div>
+              <div class="arch-name">Deploy</div>
+              <div class="arch-tech">Docker · Vercel · Railway</div>
+            </div>
+          </div>
+        </div>
+        <!-- Flow steps -->
+        <div class="flow-desc">
+          <div class="flow-item">
+            <div class="flow-num">01 · Frontend</div>
+            <div class="flow-title">React + Next.js</div>
+            <div class="flow-text">SSR/SSG, TypeScript, responsive UI, mobile via Ionic</div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">02 · API</div>
+            <div class="flow-title">Node.js REST</div>
+            <div class="flow-text">Auth middleware, input validation, business logic, webhooks</div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">03 · Data</div>
+            <div class="flow-title">PostgreSQL</div>
+            <div class="flow-text">Relational schema, migrations, RLS policies, real-time subs</div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">04 · AI</div>
+            <div class="flow-title">LLM Integration</div>
+            <div class="flow-text">Prompt design, streaming responses, tool use, embeddings</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<div class="footer">
+  <a href="mailto:steve21johnson@gmail.com">steve21johnson@gmail.com</a>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   KANBAN BOARD
+═══════════════════════════════════════ */
+const TAGS = {
+  fe:   { label:'Frontend', style:'background:rgba(199,125,255,0.1);border:1px solid rgba(199,125,255,0.25);color:#c77dff' },
+  be:   { label:'Backend',  style:'background:rgba(144,224,239,0.08);border:1px solid rgba(144,224,239,0.25);color:#90e0ef' },
+  ai:   { label:'AI',       style:'background:rgba(255,208,96,0.1);border:1px solid rgba(255,208,96,0.3);color:#ffd060' },
+  data: { label:'Database', style:'background:rgba(128,255,180,0.08);border:1px solid rgba(128,255,180,0.25);color:#80ffb4' },
+  ux:   { label:'UX',       style:'background:rgba(255,107,157,0.08);border:1px solid rgba(255,107,157,0.3);color:#ff6b9d' },
+};
+
+let kbCards = [
+  { id:1, title:'Notification preferences UI', col:'backlog', tag:'fe' },
+  { id:2, title:'Auth rate limiting middleware', col:'backlog', tag:'be' },
+  { id:3, title:'Dashboard charts', col:'building', tag:'fe' },
+  { id:4, title:'AI chat integration', col:'building', tag:'ai' },
+  { id:5, title:'User onboarding flow', col:'shipped', tag:'ux' },
+  { id:6, title:'Payment processor hooks', col:'shipped', tag:'be' },
+  { id:7, title:'Schema migration v4', col:'shipped', tag:'data' },
+];
+let nextId = 8;
+
+function renderKanban() {
+  ['backlog','building','shipped'].forEach(col => {
+    const el = document.getElementById('cards-' + col);
+    const cards = kbCards.filter(c => c.col === col);
+    document.getElementById('cnt-' + col).textContent = cards.length;
+    el.innerHTML = cards.map(c => {
+      const tag = TAGS[c.tag] || TAGS.fe;
+      const next = c.col === 'backlog' ? 'building' : c.col === 'building' ? 'shipped' : null;
+      return `<div class="kb-card ${c.col === 'shipped' ? 'shipped' : ''}" onclick="advanceCard(${c.id})">
+        <div class="kb-card-title">${c.title}</div>
+        <div class="kb-card-meta">
+          <span class="kb-tag" style="${tag.style}">${tag.label}</span>
+        </div>
+        ${next ? '<div class="kb-arrow">→</div>' : ''}
+      </div>`;
+    }).join('');
+  });
+}
+
+function advanceCard(id) {
+  const card = kbCards.find(c => c.id === id);
+  if (!card) return;
+  if (card.col === 'backlog') card.col = 'building';
+  else if (card.col === 'building') card.col = 'shipped';
+  renderKanban();
+}
+
+function showKbInput() {
+  document.getElementById('kb-input-wrap').style.display = 'block';
+  document.querySelector('.kb-add').style.display = 'none';
+  document.getElementById('kb-input').focus();
+}
+function hideKbInput() {
+  document.getElementById('kb-input-wrap').style.display = 'none';
+  document.querySelector('.kb-add').style.display = 'block';
+  document.getElementById('kb-input').value = '';
+}
+function addKbCard() {
+  const val = document.getElementById('kb-input').value.trim();
+  if (!val) return;
+  const tags = Object.keys(TAGS);
+  kbCards.push({ id: nextId++, title: val, col: 'backlog', tag: tags[Math.floor(Math.random()*tags.length)] });
+  hideKbInput();
+  renderKanban();
+}
+document.getElementById('kb-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addKbCard();
+  if (e.key === 'Escape') hideKbInput();
+});
+
+renderKanban();
+
+/* ═══════════════════════════════════════
+   USER CRUD
+═══════════════════════════════════════ */
+let users = [
+  { id:1, name:'Alex Chen',   role:'Frontend Engineer', status:'active' },
+  { id:2, name:'Maya Patel',  role:'Backend Engineer',  status:'active' },
+  { id:3, name:'Sam Rivera',  role:'Designer',          status:'away' },
+  { id:4, name:'Jordan Lee',  role:'Product Manager',   status:'offline' },
+];
+let nextUserId = 5;
+
+function statusConfig(s) {
+  if (s === 'active')  return { cls:'dot-active', label:'Active' };
+  if (s === 'away')    return { cls:'dot-away',   label:'Away' };
+  return                      { cls:'dot-off',    label:'Offline' };
+}
+
+function renderUsers() {
+  const el = document.getElementById('user-rows');
+  const empty = document.getElementById('user-empty');
+  if (!users.length) {
+    el.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  el.innerHTML = users.map(u => {
+    const s = statusConfig(u.status);
+    return `<div class="user-row" id="ur-${u.id}">
+      <span class="user-name">${u.name}</span>
+      <span class="user-role">${u.role}</span>
+      <span class="status-dot"><span class="dot ${s.cls}"></span>${s.label}</span>
+      <button class="del-btn" onclick="deleteUser(${u.id})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function addUser() {
+  const name   = document.getElementById('u-name').value.trim();
+  const role   = document.getElementById('u-role').value.trim();
+  const status = document.getElementById('u-status').value;
+  if (!name || !role) return;
+  users.push({ id: nextUserId++, name, role, status });
+  document.getElementById('u-name').value = '';
+  document.getElementById('u-role').value = '';
+  renderUsers();
+}
+function deleteUser(id) {
+  const row = document.getElementById('ur-' + id);
+  if (row) { row.style.opacity = '0'; row.style.transform = 'translateX(10px)'; row.style.transition = 'all 0.2s'; }
+  setTimeout(() => { users = users.filter(u => u.id !== id); renderUsers(); }, 200);
+}
+
+renderUsers();
+
+/* ═══════════════════════════════════════
+   AI CHAT
+═══════════════════════════════════════ */
+const SYSTEM_PROMPT = `You are Steve Johnson's product assistant — concise, technical, and direct. Steve is a full-stack technical founder (CTO) with 9 years building products: YC-backed startups, AI platforms (YourStory, befluent), freelance marketplaces (Bosmos), and more. Stack: TypeScript, React, Next.js, Supabase, PostgreSQL, Node.js, AI/LLM integration. Answer questions about product architecture, stack choices, shipping, and building things end-to-end. Keep responses under 3 sentences unless asked for more detail.`;
+
+let aiHistory = [];
+const aiStarterMsg = "Hey! I'm Steve's product assistant. Ask me anything — stack choices, architecture decisions, how to ship fast.";
+
+function addAiMessage(role, text) {
+  const el = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + (role === 'user' ? 'user' : 'bot');
+  div.innerHTML = `
+    <div class="ai-label">${role === 'user' ? 'You' : 'Assistant'}</div>
+    <div class="ai-bubble">${text}</div>
+  `;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function showTyping() {
+  const el = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg bot'; div.id = 'typing-indicator';
+  div.innerHTML = '<div class="ai-bubble ai-typing"><span></span><span></span><span></span></div>';
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+function hideTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function sendAiMsg() {
+  const input = document.getElementById('ai-input');
+  const btn = document.getElementById('ai-send-btn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  btn.disabled = true;
+  addAiMessage('user', text);
+  aiHistory.push({ role: 'user', content: text });
+  showTyping();
+
+  try {
+    const res = await fetch('/chat-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: aiHistory, system: SYSTEM_PROMPT }),
+    });
+    const data = await res.json();
+    const reply = data.content || data.message || data.reply || 'No response.';
+    hideTyping();
+    addAiMessage('bot', reply);
+    aiHistory.push({ role: 'assistant', content: reply });
+  } catch (e) {
+    hideTyping();
+    addAiMessage('bot', 'The AI service is offline in this context — but in production this hooks into Groq (Llama 3.2) or Claude depending on the use case.');
+  }
+  btn.disabled = false;
+  input.focus();
+}
+
+// Seed initial message
+addAiMessage('bot', aiStarterMsg);
+
+/* ═══════════════════════════════════════
+   METRICS COUNTERS
+═══════════════════════════════════════ */
+function animateCount(el, target, prefix, suffix, duration) {
+  const start = performance.now();
+  function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const val = Math.round(ease * target);
+    el.textContent = prefix + (val >= 1000 ? (val/1000).toFixed(val >= 10000 ? 0 : 1) + 'K' : val) + suffix;
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = prefix + (target >= 1000 ? (target/1000).toFixed(1).replace('.0','') + 'K' : target) + suffix;
+  }
+  requestAnimationFrame(step);
+}
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      animateCount(document.getElementById('m-mau'), 14000, '', '', 1600);
+      animateCount(document.getElementById('m-rev'), 190, '$', 'K+', 1800);
+      animateCount(document.getElementById('m-co'),  6, '', '', 1200);
+      animateCount(document.getElementById('m-yr'),  9, '', '', 1000);
+      drawMetricsChart();
+      observer.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+observer.observe(document.getElementById('m-mau'));
+
+/* ═══════════════════════════════════════
+   METRICS CHART
+═══════════════════════════════════════ */
+function drawMetricsChart() {
+  const canvas = document.getElementById('metricsCanvas');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const LW = canvas.parentElement.clientWidth;
+  const LH = 200;
+  canvas.width  = LW * dpr;
+  canvas.height = LH * dpr;
+  canvas.style.height = LH + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD = { l: 44, r: 20, t: 20, b: 36 };
+  const W = LW - PAD.l - PAD.r;
+  const H = LH - PAD.t - PAD.b;
+
+  // Years 2016–2025
+  const years = [2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+  const mau   = [0, 0, 0, 0.05, 0.08, 0.28, 0.22, 0.65, 0.85, 1.0]; // normalized
+  const rev   = [0, 0, 0, 0.02, 0.03, 0.12, 0.14, 0.28, 0.55, 1.0];
+  const ycBands = [{from:2020,to:2022}];
+
+  const xOf = i => PAD.l + (i / (years.length - 1)) * W;
+  const yOf = v => PAD.t + (1 - v) * H;
+
+  let progress = 0;
+  const dur = 1800;
+  const startT = performance.now();
+
+  function draw(now) {
+    progress = Math.min((now - startT) / dur, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const pts = Math.floor(ease * (years.length - 1)) + 1;
+
+    ctx.clearRect(0, 0, LW, LH);
+
+    // YC band
+    ycBands.forEach(b => {
+      const x0 = xOf(years.indexOf(b.from));
+      const x1 = xOf(years.indexOf(b.to));
+      ctx.fillStyle = 'rgba(255,208,96,0.05)';
+      ctx.fillRect(x0, PAD.t, x1 - x0, H);
+      ctx.fillStyle = 'rgba(255,208,96,0.15)';
+      ctx.font = '10px system-ui';
+      ctx.fillText('YC', x0 + 4, PAD.t + 12);
+    });
+
+    // Grid lines
+    [0.25, 0.5, 0.75, 1].forEach(v => {
+      const y = yOf(v);
+      ctx.strokeStyle = 'rgba(200,150,255,0.07)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + W, y); ctx.stroke();
+    });
+
+    // MAU line
+    ctx.beginPath();
+    ctx.strokeStyle = '#c77dff';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < Math.min(pts, years.length); i++) {
+      const x = xOf(i), y = yOf(mau[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // MAU fill
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i < Math.min(pts, years.length); i++) {
+      const x = xOf(i), y = yOf(mau[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    const lastX = xOf(Math.min(pts, years.length) - 1);
+    ctx.lineTo(lastX, PAD.t + H);
+    ctx.lineTo(PAD.l, PAD.t + H);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + H);
+    grad.addColorStop(0, 'rgba(199,125,255,0.18)');
+    grad.addColorStop(1, 'rgba(199,125,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    // Revenue line
+    ctx.beginPath();
+    ctx.strokeStyle = '#90e0ef';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    for (let i = 0; i < Math.min(pts, years.length); i++) {
+      const x = xOf(i), y = yOf(rev[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Year labels
+    ctx.fillStyle = 'rgba(200,180,255,0.4)';
+    ctx.font = '10px system-ui';
+    ctx.textAlign = 'center';
+    years.forEach((yr, i) => {
+      if (i % 2 === 0) ctx.fillText("'" + String(yr).slice(2), xOf(i), PAD.t + H + 20);
+    });
+
+    if (progress < 1) requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+</script>
+</body>
+</html>

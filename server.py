@@ -91,6 +91,9 @@ def chat():
 def chat_api():
     data = request.get_json()
     messages = data.get("messages", [])
+    system = data.get("system")
+    if system:
+        messages = [{"role": "system", "content": system}] + messages
     response = groq_client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=messages,
@@ -112,6 +115,11 @@ def auth():
 @app.route("/resume")
 def resume():
     return send_from_directory(".", "resume.html")
+
+
+@app.route("/fullstack")
+def fullstack():
+    return send_from_directory(".", "fullstack.html")
 
 
 @app.route("/spots")
