@@ -590,16 +590,16 @@
 
   // Career points: [year, normalized-impact (0-1), radius, color, label]
   const PTS = [
-    { t: 2016,   y: 0.07, r: 5,  c: '#90e0ef', lbl: 'UMD',                dir: 'above' },
-    { t: 2017,   y: 0.10, r: 4,  c: '#9090a0', lbl: 'AmeriCorps',          dir: 'below' },
-    { t: 2018,   y: 0.12, r: 5,  c: '#80ffb4', lbl: "Int'l Teaching",      dir: 'above' },
-    { t: 2019,   y: 0.22, r: 7,  c: '#c77dff', lbl: 'SE · 3 Startups',     dir: 'above' },
-    { t: 2021,   y: 0.42, r: 10, c: '#ffd060', lbl: 'Quickcard · YC W20',  dir: 'above' },
-    { t: 2022,   y: 0.36, r: 8,  c: '#ffd060', lbl: 'SlashAuth · YC W21',  dir: 'below' },
-    { t: 2023,   y: 0.30, r: 7,  c: '#90e0ef', lbl: 'PrepFactory',         dir: 'below' },
-    { t: 2024,   y: 0.52, r: 11, c: '#c77dff', lbl: 'befluent · 3K MAU',   dir: 'above' },
-    { t: 2024.6, y: 0.84, r: 18, c: '#c77dff', lbl: 'YourStory · 10K MAU', dir: 'above' },
-    { t: 2025.2, y: 0.68, r: 14, c: '#c77dff', lbl: 'Bosmos · $40K',       dir: 'below' },
+    { t: 2016,   y: 0.07, r: 5,  c: '#90e0ef', lbl: 'UMD' },
+    { t: 2017,   y: 0.10, r: 4,  c: '#9090a0', lbl: 'AmeriCorps' },
+    { t: 2018,   y: 0.12, r: 5,  c: '#80ffb4', lbl: "Int'l Teaching" },
+    { t: 2019,   y: 0.22, r: 7,  c: '#c77dff', lbl: 'SE · 3 Startups' },
+    { t: 2021,   y: 0.42, r: 10, c: '#ffd060', lbl: 'Quickcard · YC W20' },
+    { t: 2022,   y: 0.36, r: 8,  c: '#ffd060', lbl: 'SlashAuth · YC W21' },
+    { t: 2023,   y: 0.30, r: 7,  c: '#90e0ef', lbl: 'PrepFactory' },
+    { t: 2024,   y: 0.52, r: 11, c: '#c77dff', lbl: 'befluent · 3K MAU' },
+    { t: 2024.6, y: 0.84, r: 18, c: '#c77dff', lbl: 'YourStory · 10K MAU' },
+    { t: 2025.2, y: 0.68, r: 14, c: '#c77dff', lbl: 'Bosmos · $40K' },
   ];
 
   const MIN_T = 2015.6, MAX_T = 2026.2;
@@ -748,28 +748,12 @@
       // Label (fade in slightly later)
       const labelFade = Math.min((p - dotThreshold) * totalSegs * 5 - 0.5, 1);
       if (labelFade > 0) {
-        ctx.globalAlpha = labelFade * 0.9;
+        ctx.globalAlpha = labelFade * 0.75;
         ctx.fillStyle = pt.c;
-        ctx.font = "11px 'Segoe UI', system-ui, sans-serif";
-        const textW = ctx.measureText(pt.lbl).width;
-        const gap = pt.r + 8;
-        const dir = pt.dir || 'above';
-
-        // Vertical position
-        const labelY = dir === 'above'
-          ? Math.max(y - gap, PAD.top + 14)
-          : y + gap + 11;
-
-        // Horizontal: clamp so text stays within canvas
-        let labelX = x, align = 'center';
-        if (x - textW / 2 < PAD.left) {
-          align = 'left'; labelX = PAD.left;
-        } else if (x + textW / 2 > LW - PAD.right) {
-          align = 'right'; labelX = LW - PAD.right;
-        }
-
-        ctx.textAlign = align;
-        ctx.fillText(pt.lbl, labelX, labelY);
+        ctx.font = "10px 'Segoe UI', system-ui, sans-serif";
+        ctx.textAlign = x > LW * 0.75 ? 'right' : x < LW * 0.25 ? 'left' : 'center';
+        const labelY = y - pt.r - 8;
+        ctx.fillText(pt.lbl, x + (x > LW * 0.75 ? -pt.r - 2 : x < LW * 0.25 ? pt.r + 2 : 0), Math.max(labelY, PAD.top + 10));
         ctx.globalAlpha = 1;
       }
     });
