@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Local Inference · Ollama</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308;
+      --border: rgba(200,150,255,0.18);
+      --purple: #c77dff;
+      --cyan: #90e0ef;
+      --green: #6effc8;
+      --text: #ddd0ff;
+      --muted: rgba(200,180,255,0.45);
+      --surface: rgba(255,255,255,0.04);
+    }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #07071a 0%, #030308 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 24px;
+    }
+    h1 {
+      font-size: clamp(1.1rem, 4vw, 1.5rem);
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--purple), var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .local-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(110,255,200,0.08);
+      border: 1px solid rgba(110,255,200,0.25);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 28px;
+    }
+    .local-badge::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .model-select-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .model-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 12px;
+      color: var(--text);
+      font-size: 0.8rem;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select:focus { border-color: rgba(199,125,255,0.5); }
+    .chat-wrap {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+    }
+    .messages {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 300px;
+    }
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 85%;
+    }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.assistant { align-self: flex-start; align-items: flex-start; }
+    .msg-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .msg-bubble {
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .msg.user .msg-bubble {
+      background: rgba(199,125,255,0.15);
+      border: 1px solid rgba(199,125,255,0.3);
+    }
+    .msg.assistant .msg-bubble {
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .typing .msg-bubble { opacity: 0.5; font-style: italic; }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    textarea {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      transition: border-color 0.2s;
+    }
+    textarea::placeholder { color: var(--muted); }
+    textarea:focus { border-color: rgba(199,125,255,0.5); }
+    button {
+      background: linear-gradient(135deg, rgba(150,80,255,0.25), rgba(80,40,180,0.25));
+      border: 1px solid rgba(200,150,255,0.4);
+      border-radius: 14px;
+      padding: 12px 20px;
+      color: var(--text);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      white-space: nowrap;
+    }
+    button:hover { border-color: rgba(200,150,255,0.7); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>✦ Local Inference ✦</h1>
+  <p class="subtitle">Running on this machine · No API key · No cloud</p>
+  <div class="local-badge">Ollama · localhost</div>
+
+  <div class="model-select-row">
+    <span class="model-label">Model</span>
+    <select id="model-select">
+      <option value="llama3.2:1b">Llama 3.2 · 1B</option>
+      <option value="llama3.2">Llama 3.2 · 3B</option>
+    </select>
+  </div>
+
+  <div class="chat-wrap">
+    <div class="messages" id="messages"></div>
+    <div class="input-row">
+      <textarea id="input" placeholder="Say something…" rows="2"></textarea>
+      <button id="send-btn" onclick="send()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const messages = [];
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('send-btn');
+    const modelSelect = document.getElementById('model-select');
+
+    function renderMessages(streamingEl) {
+      if (streamingEl) return; // don't re-render during streaming
+      messagesEl.innerHTML = '';
+      messages.forEach(m => {
+        const div = document.createElement('div');
+        div.className = `msg ${m.role}`;
+        div.innerHTML = `
+          <div class="msg-label">${m.role === 'user' ? 'You' : modelSelect.options[modelSelect.selectedIndex].text}</div>
+          <div class="msg-bubble">${m.content.replace(/</g, '&lt;')}</div>
+        `;
+        messagesEl.appendChild(div);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function send() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      messages.push({ role: 'user', content: text });
+      inputEl.value = '';
+      sendBtn.disabled = true;
+      renderMessages();
+
+      // Assistant bubble for streaming
+      const assistantDiv = document.createElement('div');
+      assistantDiv.className = 'msg assistant';
+      const modelLabel = modelSelect.options[modelSelect.selectedIndex].text;
+      assistantDiv.innerHTML = `<div class="msg-label">${modelLabel}</div><div class="msg-bubble" id="stream-bubble"></div>`;
+      messagesEl.appendChild(assistantDiv);
+      const bubble = document.getElementById('stream-bubble');
+
+      try {
+        const res = await fetch('/local-inference-api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages, model: modelSelect.value })
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          // Each line is a JSON object from Ollama's streaming response
+          for (const line of chunk.split('\n')) {
+            if (!line.trim()) continue;
+            try {
+              const obj = JSON.parse(line);
+              if (obj.content) {
+                fullText += obj.content;
+                bubble.textContent = fullText;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              }
+            } catch {}
+          }
+        }
+
+        messages.push({ role: 'assistant', content: fullText });
+      } catch (e) {
+        bubble.textContent = 'Error: could not reach local Ollama server.';
+        messages.push({ role: 'assistant', content: 'Error: could not reach local Ollama server.' });
+      }
+
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    });
+  </script>
+</body>
+</html>

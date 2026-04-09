@@ -1,6 +1,8 @@
 import os
 import base64
-from flask import Flask, request, jsonify, send_from_directory
+import json
+import requests
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 import anthropic
 from groq import Groq
@@ -100,6 +102,35 @@ def chat_api():
         max_tokens=1024,
     )
     return jsonify({ "content": response.choices[0].message.content })
+
+
+@app.route("/local-inference")
+def local_inference():
+    return send_from_directory(".", "local-inference.html")
+
+
+@app.route("/local-inference-api", methods=["POST"])
+def local_inference_api():
+    data = request.get_json()
+    messages = data.get("messages", [])
+    model = data.get("model", "llama3.2:1b")
+
+    def generate():
+        resp = requests.post(
+            "http://localhost:11434/api/chat",
+            json={"model": model, "messages": messages, "stream": True},
+            stream=True,
+            timeout=120,
+        )
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            obj = json.loads(line)
+            content = obj.get("message", {}).get("content", "")
+            if content:
+                yield json.dumps({"content": content}) + "\n"
+
+    return Response(stream_with_context(generate()), mimetype="text/plain")
 
 
 @app.route("/garden")
