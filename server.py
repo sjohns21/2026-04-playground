@@ -92,7 +92,7 @@ def chat_api():
     data = request.get_json()
     messages = data.get("messages", [])
     response = groq_client.chat.completions.create(
-        model="llama-3.2-3b-preview",
+        model="llama-3.1-8b-instant",
         messages=messages,
         max_tokens=1024,
     )
