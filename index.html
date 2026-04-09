@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flower ID</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0fdf4;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      background: #16a34a;
+      color: white;
+      text-align: center;
+      padding: 1.4rem 1rem;
+    }
+
+    header h1 { font-size: 1.6rem; font-weight: 700; }
+    header p { font-size: 0.9rem; opacity: 0.85; margin-top: 0.3rem; }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .capture-area {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      border: 2px dashed #86efac;
+    }
+
+    .capture-area.has-image {
+      border: none;
+      cursor: default;
+    }
+
+    .capture-area img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      color: #86efac;
+    }
+
+    .placeholder svg { width: 64px; height: 64px; }
+    .placeholder span { font-size: 0.95rem; color: #4ade80; font-weight: 500; }
+
+    .btn-row {
+      display: flex;
+      gap: 0.8rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.85rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-camera {
+      background: #16a34a;
+      color: white;
+    }
+    .btn-camera:hover { background: #15803d; }
+
+    .btn-upload {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+    .btn-upload:hover { background: #bbf7d0; }
+
+    .btn-identify {
+      width: 100%;
+      padding: 1rem;
+      background: #16a34a;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-identify:hover { background: #15803d; }
+    .btn-identify:disabled { background: #86efac; cursor: not-allowed; }
+
+    .btn-retake {
+      width: 100%;
+      padding: 0.75rem;
+      background: transparent;
+      color: #16a34a;
+      border: 2px solid #16a34a;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #file-input { display: none; }
+
+    .result-card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      display: none;
+    }
+
+    .result-card.visible { display: block; }
+
+    .result-card .flower-name {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #16a34a;
+    }
+
+    .result-card .scientific {
+      font-style: italic;
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 0.2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 0.6rem;
+      padding: 0.2rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-high { background: #dcfce7; color: #16a34a; }
+    .badge-medium { background: #fef9c3; color: #ca8a04; }
+    .badge-low { background: #fee2e2; color: #dc2626; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #f0f0f0;
+      margin: 1rem 0;
+    }
+
+    .result-card .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 0.3rem;
+    }
+
+    .result-card .section-text {
+      font-size: 0.95rem;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 1.5rem;
+      display: none;
+    }
+    .loading.visible { display: block; }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #dcfce7;
+      border-top-color: #16a34a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 0.8rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      background: #fee2e2;
+      color: #dc2626;
+      border-radius: 12px;
+      padding: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Flower ID</h1>
+    <p>Take a photo to identify any flower</p>
+  </header>
+
+  <div class="container">
+
+    <div class="capture-area" id="capture-area">
+      <div class="placeholder" id="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 3a4 4 0 014 4c0 1.5-.6 2.8-1.5 3.8A6 6 0 0118 16H6a6 6 0 013.5-5.2A4 4 0 018 7a4 4 0 014-4z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v5M9 21h6"/>
+        </svg>
+        <span>No photo yet</span>
+      </div>
+      <img id="preview" style="display:none;" alt="Flower preview">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-camera" onclick="openCamera()">📷 Camera</button>
+      <button class="btn btn-upload" onclick="document.getElementById('file-input').click()">🖼 Upload</button>
+    </div>
+    <input type="file" id="file-input" accept="image/*" onchange="handleFile(event)">
+
+    <button class="btn-identify" id="identify-btn" onclick="identify()" disabled>Identify Flower</button>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p style="color:#16a34a; font-weight:600;">Analyzing your flower...</p>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="result-card" id="result-card">
+      <div class="flower-name" id="res-name"></div>
+      <div class="scientific" id="res-scientific"></div>
+      <span class="badge" id="res-confidence"></span>
+      <hr class="divider">
+      <div class="section-label">Family</div>
+      <div class="section-text" id="res-family"></div>
+      <hr class="divider">
+      <div class="section-label">About</div>
+      <div class="section-text" id="res-description"></div>
+      <hr class="divider">
+      <div class="section-label">Fun Fact</div>
+      <div class="section-text" id="res-funfact"></div>
+      <hr class="divider">
+      <button class="btn-retake" onclick="reset()">Try Another Flower</button>
+    </div>
+
+  </div>
+
+  <script>
+    let currentImage = null;
+
+    function openCamera() {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.capture = "environment";
+      input.onchange = handleFile;
+      input.click();
+    }
+
+    function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        currentImage = ev.target.result;
+        const preview = document.getElementById("preview");
+        const placeholder = document.getElementById("placeholder");
+        const captureArea = document.getElementById("capture-area");
+        preview.src = currentImage;
+        preview.style.display = "block";
+        placeholder.style.display = "none";
+        captureArea.classList.add("has-image");
+        document.getElementById("identify-btn").disabled = false;
+        hideResults();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function identify() {
+      if (!currentImage) return;
+
+      setLoading(true);
+      hideResults();
+
+      try {
+        const res = await fetch("/identify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: currentImage }),
+        });
+
+        const data = await res.json();
+        setLoading(false);
+
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+
+        showResult(data);
+      } catch (err) {
+        setLoading(false);
+        showError("Something went wrong. Please try again.");
+      }
+    }
+
+    function showResult(data) {
+      document.getElementById("res-name").textContent = data.name || "Unknown";
+      document.getElementById("res-scientific").textContent = data.scientific_name || "";
+      document.getElementById("res-family").textContent = data.family || "";
+      document.getElementById("res-description").textContent = data.description || "";
+      document.getElementById("res-funfact").textContent = data.fun_fact || "";
+
+      const badge = document.getElementById("res-confidence");
+      const conf = (data.confidence || "").toLowerCase();
+      badge.textContent = conf ? `${conf} confidence` : "";
+      badge.className = "badge badge-" + (conf || "medium");
+
+      document.getElementById("result-card").classList.add("visible");
+    }
+
+    function showError(msg) {
+      const el = document.getElementById("error-msg");
+      el.textContent = msg;
+      el.classList.add("visible");
+    }
+
+    function hideResults() {
+      document.getElementById("result-card").classList.remove("visible");
+      document.getElementById("error-msg").classList.remove("visible");
+    }
+
+    function setLoading(on) {
+      document.getElementById("loading").classList.toggle("visible", on);
+      document.getElementById("identify-btn").disabled = on;
+    }
+
+    function reset() {
+      currentImage = null;
+      const preview = document.getElementById("preview");
+      preview.src = "";
+      preview.style.display = "none";
+      document.getElementById("placeholder").style.display = "flex";
+      document.getElementById("capture-area").classList.remove("has-image");
+      document.getElementById("identify-btn").disabled = true;
+      hideResults();
+      document.getElementById("file-input").value = "";
+    }
+  </script>
+
+</body>
+</html>

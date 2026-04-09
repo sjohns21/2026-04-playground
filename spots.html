@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Midday Spots</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #fdf8f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      background: #92400e;
+      color: white;
+      text-align: center;
+      padding: 1.4rem 1rem;
+    }
+
+    header h1 { font-size: 1.6rem; font-weight: 700; }
+    header p { font-size: 0.9rem; opacity: 0.85; margin-top: 0.3rem; }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .location-box {
+      background: white;
+      border-radius: 16px;
+      padding: 1.4rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .location-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+
+    .location-text h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #92400e;
+    }
+
+    .location-text p {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 0.2rem;
+    }
+
+    .location-status {
+      margin-left: auto;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+    }
+
+    .status-waiting { background: #fef3c7; color: #d97706; }
+    .status-got { background: #dcfce7; color: #16a34a; }
+    .status-error { background: #fee2e2; color: #dc2626; }
+
+    .btn-find {
+      width: 100%;
+      padding: 1rem;
+      background: #92400e;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-find:hover { background: #78350f; }
+    .btn-find:disabled { background: #d6b896; cursor: not-allowed; }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      display: none;
+    }
+    .loading.visible { display: block; }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #fde8c8;
+      border-top-color: #92400e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 0.8rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .neighborhood-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #aaa;
+      letter-spacing: 0.05em;
+    }
+
+    .spot-card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      display: none;
+      border-left: 4px solid #92400e;
+    }
+    .spot-card.visible { display: block; }
+
+    .spot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .spot-name {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #92400e;
+    }
+
+    .dog-badge {
+      font-size: 0.75rem;
+      background: #dcfce7;
+      color: #16a34a;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .spot-address {
+      font-size: 0.85rem;
+      color: #999;
+      margin-bottom: 0.8rem;
+    }
+
+    .spot-vibe {
+      font-size: 0.95rem;
+      color: #444;
+      line-height: 1.5;
+      margin-bottom: 0.8rem;
+    }
+
+    .detail-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .detail-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #bbb;
+      min-width: 80px;
+      padding-top: 0.1rem;
+    }
+
+    .detail-value {
+      font-size: 0.9rem;
+      color: #333;
+      line-height: 1.5;
+    }
+
+    .error-msg {
+      background: #fee2e2;
+      color: #dc2626;
+      border-radius: 12px;
+      padding: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    .results-section { display: none; }
+    .results-section.visible { display: flex; flex-direction: column; gap: 1rem; }
+
+    nav-bottom {
+      display: block;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .nav-link {
+      color: #92400e;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Midday Spots</h1>
+    <p>Where to stop with Sierra ☕🐾</p>
+  </header>
+
+  <div class="container">
+
+    <div class="location-box">
+      <div class="location-icon">📍</div>
+      <div class="location-text">
+        <h3>Your Location</h3>
+        <p id="location-detail">Tap below to detect</p>
+      </div>
+      <span class="location-status status-waiting" id="location-status">Waiting</span>
+    </div>
+
+    <button class="btn-find" id="find-btn" onclick="findSpots()">Find My Spots</button>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p style="color:#92400e; font-weight:600;">Scouting the neighborhood...</p>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="results-section" id="results-section">
+      <div class="neighborhood-label" id="neighborhood-label"></div>
+
+      <div class="spot-card" id="spot-0">
+        <div class="spot-header">
+          <div class="spot-name" id="spot-0-name"></div>
+          <span class="dog-badge">🐾 Dog Friendly</span>
+        </div>
+        <div class="spot-address" id="spot-0-address"></div>
+        <div class="spot-vibe" id="spot-0-vibe"></div>
+        <div class="detail-row">
+          <span class="detail-label">Must Order</span>
+          <span class="detail-value" id="spot-0-order"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Why You'll Love It</span>
+          <span class="detail-value" id="spot-0-why"></span>
+        </div>
+      </div>
+
+      <div class="spot-card" id="spot-1">
+        <div class="spot-header">
+          <div class="spot-name" id="spot-1-name"></div>
+          <span class="dog-badge">🐾 Dog Friendly</span>
+        </div>
+        <div class="spot-address" id="spot-1-address"></div>
+        <div class="spot-vibe" id="spot-1-vibe"></div>
+        <div class="detail-row">
+          <span class="detail-label">Must Order</span>
+          <span class="detail-value" id="spot-1-order"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Why You'll Love It</span>
+          <span class="detail-value" id="spot-1-why"></span>
+        </div>
+      </div>
+
+      <button class="btn-find" style="background:#f0e8da; color:#92400e; margin-top:0.5rem;" onclick="findSpots()">
+        Refresh Recommendations
+      </button>
+    </div>
+
+    <nav-bottom>
+      <a href="/" class="nav-link">← Back to Flower ID</a>
+    </nav-bottom>
+
+  </div>
+
+  <script>
+    let userLat = null;
+    let userLng = null;
+
+    async function findSpots() {
+      const btn = document.getElementById("find-btn");
+      btn.disabled = true;
+      setLoading(true);
+      hideResults();
+
+      try {
+        const pos = await getLocation();
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+
+        document.getElementById("location-detail").textContent =
+          `${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+        document.getElementById("location-status").textContent = "Got it";
+        document.getElementById("location-status").className = "location-status status-got";
+
+        const res = await fetch("/recommend", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat: userLat, lng: userLng }),
+        });
+
+        const data = await res.json();
+        setLoading(false);
+        btn.disabled = false;
+
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+
+        showResults(data);
+      } catch (err) {
+        setLoading(false);
+        btn.disabled = false;
+        if (err.code === 1) {
+          document.getElementById("location-status").textContent = "Denied";
+          document.getElementById("location-status").className = "location-status status-error";
+          showError("Location access denied. Please allow location in your browser settings.");
+        } else {
+          showError("Something went wrong. Please try again.");
+        }
+      }
+    }
+
+    function getLocation() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocation not supported"));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
+    }
+
+    function showResults(data) {
+      document.getElementById("neighborhood-label").textContent =
+        "📍 " + (data.neighborhood || "Your neighborhood");
+
+      const spots = data.spots || [];
+      spots.forEach((spot, i) => {
+        if (i > 1) return;
+        document.getElementById(`spot-${i}-name`).textContent = spot.name;
+        document.getElementById(`spot-${i}-address`).textContent = spot.address;
+        document.getElementById(`spot-${i}-vibe`).textContent = spot.vibe;
+        document.getElementById(`spot-${i}-order`).textContent = spot.must_order;
+        document.getElementById(`spot-${i}-why`).textContent = spot.why;
+        document.getElementById(`spot-${i}`).classList.add("visible");
+      });
+
+      document.getElementById("results-section").classList.add("visible");
+    }
+
+    function showError(msg) {
+      const el = document.getElementById("error-msg");
+      el.textContent = msg;
+      el.classList.add("visible");
+    }
+
+    function hideResults() {
+      document.getElementById("results-section").classList.remove("visible");
+      document.getElementById("error-msg").classList.remove("visible");
+      document.getElementById("spot-0").classList.remove("visible");
+      document.getElementById("spot-1").classList.remove("visible");
+    }
+
+    function setLoading(on) {
+      document.getElementById("loading").classList.toggle("visible", on);
+    }
+  </script>
+
+</body>
+</html>
