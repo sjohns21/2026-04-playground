@@ -713,7 +713,7 @@
 
     // Draw dots for points that have been reached
     PTS.forEach((pt, i) => {
-      const dotThreshold = i / totalSegs;
+      const dotThreshold = i / (totalSegs + 1);
       if (p < dotThreshold) return;
 
       const dotFade = Math.min((p - dotThreshold) * totalSegs * 3, 1);
