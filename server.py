@@ -75,6 +75,21 @@ def identify():
     return jsonify(result)
 
 
+@app.route("/garden")
+def garden():
+    return send_from_directory(".", "garden.html")
+
+
+@app.route("/auth")
+def auth():
+    return send_from_directory(".", "auth.html")
+
+
+@app.route("/resume")
+def resume():
+    return send_from_directory(".", "resume.html")
+
+
 @app.route("/spots")
 def spots_page():
     return send_from_directory(".", "spots.html")
