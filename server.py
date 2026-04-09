@@ -15,6 +15,11 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 @app.route("/")
 def index():
+    return send_from_directory(".", "index.html")
+
+
+@app.route("/flower-id")
+def flower_id():
     return send_from_directory(".", "flower-id.html")
 
 

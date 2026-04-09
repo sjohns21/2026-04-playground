@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Playground</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308;
+      --border: rgba(200,150,255,0.18);
+      --purple: #c77dff;
+      --cyan: #90e0ef;
+      --green: #80ffb4;
+      --pink: #ff6b9d;
+      --gold: #ffd060;
+      --text: #ddd0ff;
+      --muted: rgba(200,180,255,0.45);
+    }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #07071a 0%, #030308 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+    h1 {
+      font-size: clamp(1.4rem, 5vw, 2rem);
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--purple), var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 48px;
+      text-align: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 600px;
+    }
+    a.card {
+      display: block;
+      text-decoration: none;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 20px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    a.card:hover {
+      background: rgba(200,150,255,0.06);
+      border-color: rgba(200,150,255,0.4);
+    }
+    .card-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <h1>✦ Playground ✦</h1>
+  <p class="subtitle">2026 · 04</p>
+  <div class="grid">
+    <a class="card" href="/flower-id">
+      <div class="card-label">App</div>
+      <div class="card-title">Flower ID</div>
+      <div class="card-desc">Identify any flower from a photo using Claude.</div>
+    </a>
+    <a class="card" href="/garden">
+      <div class="card-label">App</div>
+      <div class="card-title">Mohana's Garden</div>
+      <div class="card-desc">Generative animated flower canvas.</div>
+    </a>
+    <a class="card" href="/spots">
+      <div class="card-label">App</div>
+      <div class="card-title">Midday Spots</div>
+      <div class="card-desc">Dog-friendly cafe recommendations near you.</div>
+    </a>
+    <a class="card" href="/auth">
+      <div class="card-label">Explorer</div>
+      <div class="card-title">Auth Explorer</div>
+      <div class="card-desc">Interactive walkthrough of web authorization flows.</div>
+    </a>
+    <a class="card" href="/resume">
+      <div class="card-label">About</div>
+      <div class="card-title">Resume</div>
+      <div class="card-desc">Steve Johnson.</div>
+    </a>
+  </div>
+</body>
+</html>
