@@ -40,7 +40,7 @@ Steve Johnson's resume.
 
 **Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · Vanilla HTML/CSS/JS
 
-## Mobile Dev (`serve-mobile.sh`)
+## Dev Server (`serve.sh`)
 
 Live-reload any file on your phone while Claude edits locally.
 
@@ -51,7 +51,7 @@ ngrok http 8742
 
 **Terminal 2** — start the dev server:
 ```bash
-./serve-mobile.sh
+./serve.sh
 ```
 
 After 3 seconds the script prints the public URL:
