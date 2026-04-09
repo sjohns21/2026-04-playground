@@ -591,7 +591,7 @@
   // Career points: [year, normalized-impact (0-1), radius, color, label]
   const PTS = [
     { t: 2016,   y: 0.07, r: 5,  c: '#90e0ef', lbl: 'UMD' },
-    { t: 2017,   y: 0.10, r: 4,  c: '#9090a0', lbl: 'AmeriCorps' },
+    { t: 2017,   y: 0.10, r: 4,  c: '#9090a0', lbl: 'AmeriCorps', align: 'center' },
     { t: 2018,   y: 0.12, r: 5,  c: '#80ffb4', lbl: "Int'l Teaching" },
     { t: 2019,   y: 0.22, r: 7,  c: '#c77dff', lbl: 'SE · 3 Startups' },
     { t: 2021,   y: 0.42, r: 10, c: '#ffd060', lbl: 'Quickcard · YC W20' },
@@ -751,9 +751,12 @@
         ctx.globalAlpha = labelFade * 0.75;
         ctx.fillStyle = pt.c;
         ctx.font = "10px 'Segoe UI', system-ui, sans-serif";
-        ctx.textAlign = x > LW * 0.75 ? 'right' : x < LW * 0.25 ? 'left' : 'center';
+        const autoAlign = x > LW * 0.75 ? 'right' : x < LW * 0.25 ? 'left' : 'center';
+        const align = pt.align || autoAlign;
+        ctx.textAlign = align;
+        const labelX = align === 'right' ? x - pt.r - 2 : align === 'left' ? x + pt.r + 2 : x;
         const labelY = y - pt.r - 8;
-        ctx.fillText(pt.lbl, x + (x > LW * 0.75 ? -pt.r - 2 : x < LW * 0.25 ? pt.r + 2 : 0), Math.max(labelY, PAD.top + 10));
+        ctx.fillText(pt.lbl, labelX, Math.max(labelY, PAD.top + 10));
         ctx.globalAlpha = 1;
       }
     });
