@@ -3,6 +3,7 @@ import base64
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import anthropic
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,6 +12,7 @@ app = Flask(__name__, static_folder=".")
 CORS(app)
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 @app.route("/")
@@ -78,6 +80,23 @@ def identify():
         result = {"raw": raw}
 
     return jsonify(result)
+
+
+@app.route("/chat")
+def chat():
+    return send_from_directory(".", "chat.html")
+
+
+@app.route("/chat-api", methods=["POST"])
+def chat_api():
+    data = request.get_json()
+    messages = data.get("messages", [])
+    response = groq_client.chat.completions.create(
+        model="llama-3.2-3b-preview",
+        messages=messages,
+        max_tokens=1024,
+    )
+    return jsonify({ "content": response.choices[0].message.content })
 
 
 @app.route("/garden")
