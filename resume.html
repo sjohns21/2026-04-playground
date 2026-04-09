@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Steve Johnson · Resume</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --purple: #c77dff; --cyan: #90e0ef; --green: #80ffb4;
+      --gold: #ffd060; --pink: #ff6b9d;
+      --text: #ddd0ff; --muted: rgba(200,180,255,0.45);
+      --border: rgba(200,150,255,0.18); --surface: rgba(255,255,255,0.04);
+    }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #07071a 0%, #030308 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text); overflow-x: hidden;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 24px;
+      background: rgba(3,3,8,0.88); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav a { color: var(--muted); text-decoration: none; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.2s; }
+    .nav a:hover { color: var(--purple); }
+    .nav-sep { color: rgba(200,150,255,0.22); font-size: 0.8rem; }
+    .nav-cur { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--purple); }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 860px; margin: 0 auto;
+      padding: 52px 24px 36px;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+    }
+    .hero-name {
+      font-size: clamp(2.2rem, 8vw, 4rem);
+      font-weight: 200; letter-spacing: 0.22em;
+      background: linear-gradient(90deg, #c77dff, #90e0ef, #c77dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 10px;
+    }
+    .hero-role {
+      font-size: 0.76rem; letter-spacing: 0.24em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 8px;
+    }
+    .hero-email {
+      font-size: 0.74rem; letter-spacing: 0.1em;
+      color: rgba(144,224,239,0.55); text-decoration: none;
+      transition: color 0.2s; margin-bottom: 36px;
+      font-family: 'Courier New', monospace;
+    }
+    .hero-email:hover { color: var(--cyan); }
+
+    /* Stats */
+    .stats-row {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      width: 100%; max-width: 680px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 18px; text-align: center;
+      flex: 1; min-width: 110px;
+    }
+    .stat-val {
+      font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 200; line-height: 1;
+      background: linear-gradient(135deg, #c77dff, #90e0ef);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat-lbl { font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+
+    /* ── Trajectory Chart ── */
+    .chart-section { max-width: 860px; margin: 0 auto 52px; padding: 0 24px; }
+    .section-label {
+      font-size: 0.6rem; letter-spacing: 0.26em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .chart-wrap {
+      background: rgba(0,0,0,0.38); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden; position: relative;
+    }
+    #trajCanvas { display: block; width: 100%; height: auto; }
+    .chart-legend {
+      display: flex; gap: 18px; flex-wrap: wrap; padding: 12px 20px 16px;
+      border-top: 1px solid rgba(200,150,255,0.1);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.62rem; letter-spacing: 0.08em; color: var(--muted); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Timeline ── */
+    .tl-section { max-width: 860px; margin: 0 auto 56px; padding: 0 24px; }
+    .timeline { position: relative; }
+    .tl-line {
+      position: absolute; left: 64px; top: 0; bottom: 0; width: 1px;
+      background: linear-gradient(to bottom, transparent, rgba(199,125,255,0.25) 6%, rgba(199,125,255,0.25) 94%, transparent);
+    }
+    .tl-item {
+      display: grid; grid-template-columns: 50px 30px 1fr;
+      gap: 0 14px; margin-bottom: 28px; align-items: start;
+    }
+    .tl-year {
+      font: 0.62rem 'Courier New', monospace; letter-spacing: 0.08em;
+      color: var(--muted); text-align: right; padding-top: 17px; line-height: 1.2;
+    }
+    .tl-node-col { display: flex; flex-direction: column; align-items: center; }
+    .tl-node {
+      position: relative; border-radius: 50%; flex-shrink: 0;
+      margin-top: 14px; z-index: 2;
+      display: flex; align-items: center; justify-content: center;
+    }
+    /* sizes */
+    .n-sm { width: 14px; height: 14px; }
+    .n-md { width: 20px; height: 20px; }
+    .n-lg { width: 28px; height: 28px; }
+    .n-xl { width: 38px; height: 38px; }
+    /* type colors */
+    .t-edu   { background: rgba(144,224,239,0.15); border: 2px solid #90e0ef; box-shadow: 0 0 10px rgba(144,224,239,0.35); }
+    .t-misc  { background: rgba(200,180,255,0.08); border: 2px solid rgba(200,180,255,0.35); }
+    .t-world { background: rgba(128,255,180,0.12); border: 2px solid #80ffb4;  box-shadow: 0 0 10px rgba(128,255,180,0.3); }
+    .t-eng   { background: rgba(199,125,255,0.12); border: 2px solid #c77dff;  box-shadow: 0 0 12px rgba(199,125,255,0.35); }
+    .t-yc    { background: rgba(255,208,96,0.12);  border: 2px solid #ffd060;  box-shadow: 0 0 14px rgba(255,208,96,0.4); }
+    .t-found { background: rgba(199,125,255,0.18); border: 2px solid #c77dff;  box-shadow: 0 0 18px rgba(199,125,255,0.55); }
+    /* rings */
+    .ring {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 1px solid currentColor;
+      animation: rpulse 2.6s ease-out infinite; opacity: 0;
+    }
+    .t-edu   .ring { color: #90e0ef; }
+    .t-world .ring { color: #80ffb4; }
+    .t-eng   .ring { color: #c77dff; }
+    .t-yc    .ring { color: #ffd060; }
+    .t-found .ring { color: #c77dff; }
+    .r2 { animation-delay: 0.87s; }
+    .r3 { animation-delay: 1.74s; }
+    @keyframes rpulse {
+      0%   { opacity: 0.65; transform: scale(1); }
+      100% { opacity: 0;    transform: scale(2.8); }
+    }
+
+    /* Cards */
+    .tl-card {
+      background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px 18px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .tl-card:hover { border-color: rgba(199,125,255,0.32); background: rgba(255,255,255,0.045); }
+    .card-top { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .card-org { font-size: 0.9rem; font-weight: 500; letter-spacing: 0.03em; flex: 1; }
+    .card-org a { color: inherit; text-decoration: none; transition: color 0.2s; }
+    .card-org a:hover { color: var(--purple); }
+    .card-role { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .card-desc { font-size: 0.77rem; color: var(--muted); line-height: 1.68; }
+
+    /* Badges */
+    .badge {
+      font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 20px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+    }
+    .b-yc     { background: rgba(255,208,96,0.14);  border: 1px solid rgba(255,208,96,0.5);  color: var(--gold); }
+    .b-found  { background: rgba(199,125,255,0.1);  border: 1px solid rgba(199,125,255,0.38); color: var(--purple); }
+    .b-consult{ background: rgba(144,224,239,0.08); border: 1px solid rgba(144,224,239,0.3);  color: var(--cyan); }
+
+    /* Tags */
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .tag {
+      font-size: 0.6rem; letter-spacing: 0.06em;
+      padding: 3px 9px; border-radius: 20px; transition: all 0.2s;
+    }
+    .tag-built { background: rgba(199,125,255,0.08); border: 1px solid rgba(199,125,255,0.22); color: rgba(199,125,255,0.85); }
+    .tag-world { background: rgba(128,255,180,0.08); border: 1px solid rgba(128,255,180,0.3);  color: rgba(128,255,180,0.9); }
+    .tag-misc  { background: rgba(200,180,255,0.06); border: 1px solid rgba(200,180,255,0.2);  color: var(--muted); }
+
+    /* Metrics */
+    .metrics { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .metric {
+      background: rgba(0,0,0,0.32); border: 1px solid rgba(199,125,255,0.18);
+      border-radius: 10px; padding: 8px 14px; text-align: center;
+      transition: border-color 0.2s;
+    }
+    .tl-card:hover .metric { border-color: rgba(199,125,255,0.3); }
+    .metric-val {
+      font-size: 1.05rem; font-weight: 300; letter-spacing: 0.06em; line-height: 1;
+      background: linear-gradient(135deg, #c77dff, #90e0ef);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .metric-lbl { font-size: 0.54rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+    .metric-sub { font-size: 0.52rem; color: rgba(200,180,255,0.28); margin-top: 2px; }
+
+    /* ── Tech Stack ── */
+    .tech-section { max-width: 860px; margin: 0 auto 60px; padding: 0 24px; }
+    .tech-cloud { display: flex; flex-wrap: wrap; gap: 10px; }
+    .tech-pill {
+      display: flex; align-items: center; gap: 8px;
+      border-radius: 24px; padding: 9px 18px;
+      border: 1px solid var(--border); background: var(--surface);
+      transition: all 0.22s; cursor: default;
+    }
+    .tech-pill:hover { transform: translateY(-3px); background: rgba(255,255,255,0.07); }
+    .tech-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .tech-name { font-size: 0.8rem; letter-spacing: 0.06em; }
+    .tech-pill.lg { padding: 11px 22px; }
+    .tech-pill.lg .tech-name { font-size: 0.95rem; }
+    .tech-pill.lg .tech-dot { width: 10px; height: 10px; }
+    .tech-pill.sm { padding: 6px 14px; opacity: 0.75; }
+    .tech-pill.sm .tech-name { font-size: 0.7rem; }
+
+    /* ── Footer ── */
+    .footer { text-align: center; padding: 36px 20px 60px; }
+    .footer-links { display: flex; justify-content: center; align-items: center; gap: 0; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; padding: 6px 14px; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--purple); }
+    .footer-sep { color: rgba(200,150,255,0.2); }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html">✦ Garden</a>
+  <span class="nav-sep">/</span>
+  <a href="auth.html">Auth</a>
+  <span class="nav-sep">/</span>
+  <span class="nav-cur">Resume</span>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-name">STEVE JOHNSON</div>
+  <div class="hero-role">Technical Founder &nbsp;·&nbsp; CTO &nbsp;·&nbsp; Engineer</div>
+  <a class="hero-email" href="mailto:steve21johnson@gmail.com">steve21johnson@gmail.com</a>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val" id="s-companies">6</div>
+      <div class="stat-lbl">Companies</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="s-yc">2</div>
+      <div class="stat-lbl">YC Backed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="s-mau">14K+</div>
+      <div class="stat-lbl">Peak Total MAU</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="s-rev">$190K+</div>
+      <div class="stat-lbl">Revenue / ARR</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="s-yrs">9</div>
+      <div class="stat-lbl">Years Building</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Trajectory Chart ── -->
+<div class="chart-section">
+  <div class="section-label">Career Trajectory</div>
+  <div class="chart-wrap">
+    <canvas id="trajCanvas"></canvas>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#90e0ef"></div> Education</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#80ffb4"></div> Teaching / Int'l</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c77dff"></div> Engineering / CTO</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ffd060"></div> YC Backed</div>
+      <div class="legend-item" style="margin-left:auto;font-style:italic">↑ scale of impact</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Timeline ── -->
+<div class="tl-section">
+  <div class="section-label">Full Timeline</div>
+  <div class="timeline">
+    <div class="tl-line"></div>
+
+    <!-- UMD -->
+    <div class="tl-item">
+      <div class="tl-year">'16</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-sm t-edu">
+          <div class="ring"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org">University of Maryland</div>
+        </div>
+        <div class="card-role">BS · Mechanical Engineering</div>
+        <div class="card-desc">Entrepreneurship &amp; Innovation Honors. Co-op with Distinction.</div>
+        <div class="tags">
+          <span class="tag tag-misc">Honors</span>
+          <span class="tag tag-misc">Co-op</span>
+          <span class="tag tag-misc">Mech. Eng.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2017 -->
+    <div class="tl-item">
+      <div class="tl-year">'17</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-sm t-misc"></div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org">City Year · Pursuit Charters · PrepFactory</div>
+        </div>
+        <div class="card-role">Teaching · Entrepreneurship · Operations</div>
+        <div class="card-desc">AmeriCorps teaching. Launched a small charter sailing business. Startup business operations at PrepFactory.</div>
+        <div class="tags">
+          <span class="tag tag-misc">AmeriCorps</span>
+          <span class="tag tag-misc">Small Business</span>
+          <span class="tag tag-misc">Ops</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2018 -->
+    <div class="tl-item">
+      <div class="tl-year">'18</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-sm t-world">
+          <div class="ring"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org"><a href="https://multiaidprograms.org" target="_blank">Multi Aid Programs</a></div>
+        </div>
+        <div class="card-role">International Teaching</div>
+        <div class="card-desc">Taught across three continents, working directly with underserved communities in conflict and post-conflict zones.</div>
+        <div class="tags">
+          <span class="tag tag-world">🇱🇧 Lebanon</span>
+          <span class="tag tag-world">🇰🇪 Kenya</span>
+          <span class="tag tag-world">🇮🇳 India</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2019 -->
+    <div class="tl-item">
+      <div class="tl-year">'19</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-md t-eng">
+          <div class="ring"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org">Rubix · Linkalock · PrepFactory</div>
+        </div>
+        <div class="card-role">Software Engineer</div>
+        <div class="card-desc">Built across three early-stage startups: marketing sites, analytics dashboards, payment backends, and a tutoring interface.</div>
+        <div class="tags">
+          <span class="tag tag-built">Marketing</span>
+          <span class="tag tag-built">Analytics</span>
+          <span class="tag tag-built">Payments</span>
+          <span class="tag tag-built">Tutoring</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quickcard -->
+    <div class="tl-item">
+      <div class="tl-year">'20–22</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-lg t-yc">
+          <div class="ring"></div>
+          <div class="ring r2"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org">Quickcard</div>
+          <span class="badge b-yc">YC W20</span>
+        </div>
+        <div class="card-role">Software Engineer → CTO</div>
+        <div class="card-desc">Built a fully automated sales deck tool — AI-powered templates, sender, live viewer, and engagement analytics for B2B sales teams.</div>
+        <div class="tags">
+          <span class="tag tag-built">Deck Editor</span>
+          <span class="tag tag-built">Sender</span>
+          <span class="tag tag-built">Viewer</span>
+          <span class="tag tag-built">Analytics</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SlashAuth / PeerTeach -->
+    <div class="tl-item">
+      <div class="tl-year">'22</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-md t-yc">
+          <div class="ring"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org">SlashAuth &nbsp;·&nbsp; PeerTeach (Stanford)</div>
+          <span class="badge b-yc">YC W21</span>
+        </div>
+        <div class="card-role">Software Engineer</div>
+        <div class="card-desc">Built printing, scanning, and auto-grading systems for classroom assessments — making paper-based exams digitally analyzed at scale.</div>
+        <div class="tags">
+          <span class="tag tag-built">Print</span>
+          <span class="tag tag-built">Scan</span>
+          <span class="tag tag-built">Grading</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PrepFactory CTO -->
+    <div class="tl-item">
+      <div class="tl-year">'23</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-md t-eng">
+          <div class="ring"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org"><a href="https://prepfactory.com" target="_blank">PrepFactory</a></div>
+          <span class="badge b-consult">Consulting</span>
+        </div>
+        <div class="card-role">CTO</div>
+        <div class="card-desc">Rescued failing production infrastructure: Dockerized the PHP monolith and migrated the database to PlanetScale with zero downtime.</div>
+        <div class="tags">
+          <span class="tag tag-built">Docker</span>
+          <span class="tag tag-built">PlanetScale</span>
+          <span class="tag tag-built">PHP</span>
+          <span class="tag tag-built">Infra</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- befluent -->
+    <div class="tl-item">
+      <div class="tl-year">'23–25</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-lg t-found">
+          <div class="ring"></div>
+          <div class="ring r2"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org"><a href="https://befluent.ai" target="_blank">befluent.ai</a></div>
+          <span class="badge b-found">Cofounder · CTO</span>
+        </div>
+        <div class="card-role">AI-Powered English Tutor</div>
+        <div class="card-desc">Built an adaptive AI English language tutor with structured exercises, real-time feedback, and learning analytics for non-native speakers.</div>
+        <div class="tags">
+          <span class="tag tag-built">AI Tutor</span>
+          <span class="tag tag-built">Exercises</span>
+          <span class="tag tag-built">Analytics</span>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-val">3K</div>
+            <div class="metric-lbl">MAU</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- YourStory -->
+    <div class="tl-item">
+      <div class="tl-year">'23–25</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-xl t-found">
+          <div class="ring"></div>
+          <div class="ring r2"></div>
+          <div class="ring r3"></div>
+        </div>
+      </div>
+      <div class="tl-card" style="border-color:rgba(199,125,255,0.28)">
+        <div class="card-top">
+          <div class="card-org"><a href="https://yourstory.education" target="_blank">YourStory Education</a></div>
+          <span class="badge b-found">Cofounder · CTO</span>
+        </div>
+        <div class="card-role">AI-Powered K-12 Education Platform</div>
+        <div class="card-desc">Built a full AI-powered K-12 learning platform featuring personalized AI characters, interactive lessons, and curriculum libraries — from zero to funded.</div>
+        <div class="tags">
+          <span class="tag tag-built">AI Characters</span>
+          <span class="tag tag-built">Lessons</span>
+          <span class="tag tag-built">Libraries</span>
+          <span class="tag tag-built">Admin</span>
+          <span class="tag tag-built">Analytics</span>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-val">$50K</div>
+            <div class="metric-lbl">ARR</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">10K</div>
+            <div class="metric-lbl">MAU</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">$100K</div>
+            <div class="metric-lbl">Raised</div>
+            <div class="metric-sub">$9M cap</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bosmos -->
+    <div class="tl-item">
+      <div class="tl-year">'25</div>
+      <div class="tl-node-col">
+        <div class="tl-node n-lg t-found">
+          <div class="ring"></div>
+          <div class="ring r2"></div>
+        </div>
+      </div>
+      <div class="tl-card">
+        <div class="card-top">
+          <div class="card-org"><a href="https://bosmos.org" target="_blank">Bosmos</a></div>
+          <span class="badge b-found">Cofounder · CTO</span>
+        </div>
+        <div class="card-role">Freelance Marketplace</div>
+        <div class="card-desc">Built a full-stack freelance platform with smart talent matching, invoicing, project workflows, real-time chat, file sharing, and escrow — end to end.</div>
+        <div class="tags">
+          <span class="tag tag-built">Matching</span>
+          <span class="tag tag-built">Invoicing</span>
+          <span class="tag tag-built">Workflows</span>
+          <span class="tag tag-built">Chat</span>
+          <span class="tag tag-built">Files</span>
+          <span class="tag tag-built">Escrow</span>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-val">$40K</div>
+            <div class="metric-lbl">Revenue</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">1K</div>
+            <div class="metric-lbl">MAU</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /timeline -->
+</div>
+
+<!-- ── Tech Stack ── -->
+<div class="tech-section">
+  <div class="section-label">Tech Stack</div>
+  <div class="tech-cloud">
+    <div class="tech-pill lg" style="border-color:rgba(49,120,198,0.5)"><div class="tech-dot" style="background:#3178c6"></div><span class="tech-name">TypeScript</span></div>
+    <div class="tech-pill lg" style="border-color:rgba(97,218,251,0.4)"><div class="tech-dot" style="background:#61dafb"></div><span class="tech-name">React</span></div>
+    <div class="tech-pill lg" style="border-color:rgba(221,208,255,0.3)"><div class="tech-dot" style="background:#ddd0ff"></div><span class="tech-name">Next.js</span></div>
+    <div class="tech-pill" style="border-color:rgba(62,207,142,0.4)"><div class="tech-dot" style="background:#3ecf8e"></div><span class="tech-name">Supabase</span></div>
+    <div class="tech-pill" style="border-color:rgba(78,142,247,0.4)"><div class="tech-dot" style="background:#4e8ef7"></div><span class="tech-name">Ionic · Mobile</span></div>
+    <div class="tech-pill" style="border-color:rgba(128,255,180,0.3)"><div class="tech-dot" style="background:#80ffb4"></div><span class="tech-name">Node.js</span></div>
+    <div class="tech-pill" style="border-color:rgba(255,208,96,0.3)"><div class="tech-dot" style="background:#ffd060"></div><span class="tech-name">JavaScript</span></div>
+    <div class="tech-pill" style="border-color:rgba(144,224,239,0.3)"><div class="tech-dot" style="background:#90e0ef"></div><span class="tech-name">PostgreSQL</span></div>
+    <div class="tech-pill sm" style="border-color:rgba(13,183,237,0.3)"><div class="tech-dot" style="background:#0db7ed"></div><span class="tech-name">Docker</span></div>
+    <div class="tech-pill sm" style="border-color:rgba(136,146,190,0.3)"><div class="tech-dot" style="background:#8892be"></div><span class="tech-name">PHP</span></div>
+    <div class="tech-pill sm"><div class="tech-dot" style="background:#c77dff"></div><span class="tech-name">REST APIs</span></div>
+    <div class="tech-pill sm"><div class="tech-dot" style="background:#ff6b9d"></div><span class="tech-name">AI / LLM</span></div>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<div class="footer">
+  <div class="footer-links">
+    <a href="index.html">✦ Garden</a>
+    <span class="footer-sep">·</span>
+    <a href="auth.html">Auth Explorer</a>
+    <span class="footer-sep">·</span>
+    <a href="mailto:steve21johnson@gmail.com">steve21johnson@gmail.com</a>
+  </div>
+</div>
+
+<script>
+/* ── Trajectory Chart ── */
+(function() {
+  const canvas = document.getElementById('trajCanvas');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // Logical dimensions
+  const LW = 820, LH = 300;
+  canvas.width  = LW * dpr;
+  canvas.height = LH * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD = { left: 52, right: 28, top: 36, bottom: 48 };
+  const W = LW - PAD.left - PAD.right;
+  const H = LH - PAD.top  - PAD.bottom;
+
+  // Career points: [year, normalized-impact (0-1), radius, color, label]
+  const PTS = [
+    { t: 2016,   y: 0.07, r: 5,  c: '#90e0ef', lbl: 'UMD' },
+    { t: 2017,   y: 0.10, r: 4,  c: '#9090a0', lbl: 'AmeriCorps' },
+    { t: 2018,   y: 0.12, r: 5,  c: '#80ffb4', lbl: "Int'l Teaching" },
+    { t: 2019,   y: 0.22, r: 7,  c: '#c77dff', lbl: 'SE · 3 Startups' },
+    { t: 2021,   y: 0.42, r: 10, c: '#ffd060', lbl: 'Quickcard · YC W20' },
+    { t: 2022,   y: 0.36, r: 8,  c: '#ffd060', lbl: 'SlashAuth · YC W21' },
+    { t: 2023,   y: 0.30, r: 7,  c: '#90e0ef', lbl: 'PrepFactory' },
+    { t: 2024,   y: 0.52, r: 11, c: '#c77dff', lbl: 'befluent · 3K MAU' },
+    { t: 2024.6, y: 0.84, r: 18, c: '#c77dff', lbl: 'YourStory · 10K MAU' },
+    { t: 2025.2, y: 0.68, r: 14, c: '#c77dff', lbl: 'Bosmos · $40K' },
+  ];
+
+  const MIN_T = 2015.6, MAX_T = 2025.8;
+
+  function tx(t) { return PAD.left + ((t - MIN_T) / (MAX_T - MIN_T)) * W; }
+  function ty(y) { return PAD.top  + H - y * H; }
+
+  // Year labels on X axis
+  const YEARS = [2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+
+  let progress = 0;
+  const DURATION = 2200; // ms
+  let startTime = null;
+
+  // Draw a single frame at progress p (0 to 1)
+  function draw(p) {
+    ctx.clearRect(0, 0, LW, LH);
+
+    // Background subtle grid lines
+    ctx.strokeStyle = 'rgba(200,150,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const yy = PAD.top + (H / 4) * i;
+      ctx.beginPath(); ctx.moveTo(PAD.left, yy); ctx.lineTo(PAD.left + W, yy); ctx.stroke();
+    }
+
+    // X axis
+    ctx.strokeStyle = 'rgba(200,150,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, PAD.top + H);
+    ctx.lineTo(PAD.left + W, PAD.top + H);
+    ctx.stroke();
+
+    // Year labels
+    ctx.fillStyle = 'rgba(200,180,255,0.35)';
+    ctx.font = `${10 * dpr / dpr}px 'Courier New', monospace`;
+    ctx.textAlign = 'center';
+    YEARS.forEach(yr => {
+      const x = tx(yr);
+      ctx.fillText(String(yr), x, PAD.top + H + 18);
+      // tick
+      ctx.strokeStyle = 'rgba(200,150,255,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, PAD.top + H); ctx.lineTo(x, PAD.top + H + 5); ctx.stroke();
+    });
+
+    // Y label
+    ctx.save();
+    ctx.translate(14, PAD.top + H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = 'rgba(200,180,255,0.25)';
+    ctx.font = "9px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = 'center';
+    ctx.fillText('scale', 0, 0);
+    ctx.restore();
+
+    // Total progress maps to which segment we're drawing
+    const totalSegs = PTS.length - 1;
+    const segProgress = p * totalSegs; // e.g. 1.7 means 1 full seg + 70% of seg 2
+
+    // Draw path
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (let i = 0; i < totalSegs; i++) {
+      const segFrac = Math.min(Math.max(segProgress - i, 0), 1);
+      if (segFrac <= 0) break;
+
+      const A = PTS[i], B = PTS[i + 1];
+      const ax = tx(A.t), ay = ty(A.y);
+      const bx = tx(B.t), by = ty(B.y);
+
+      // Interpolate endpoint
+      const ex = ax + (bx - ax) * segFrac;
+      const ey = ay + (by - ay) * segFrac;
+
+      // Gradient stroke for this segment
+      const grad = ctx.createLinearGradient(ax, ay, bx, by);
+      grad.addColorStop(0, A.c + 'aa');
+      grad.addColorStop(1, B.c + 'aa');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = A.c;
+      ctx.shadowBlur = 6;
+
+      ctx.beginPath();
+      // Smooth cubic bezier between points
+      const cpx = ax + (bx - ax) * 0.45;
+      const cpy = ay;
+      const cpx2 = ax + (bx - ax) * 0.55;
+      const cpy2 = ey;
+
+      if (segFrac < 1) {
+        // Partially drawn — approximate with lines
+        ctx.moveTo(ax, ay);
+        const steps = 20;
+        for (let s = 1; s <= Math.round(steps * segFrac); s++) {
+          const t2 = s / steps;
+          const bx2 = Math.pow(1-t2,3)*ax + 3*Math.pow(1-t2,2)*t2*cpx + 3*(1-t2)*t2*t2*cpx2 + t2*t2*t2*bx;
+          const by2 = Math.pow(1-t2,3)*ay + 3*Math.pow(1-t2,2)*t2*cpy + 3*(1-t2)*t2*t2*cpy2 + t2*t2*t2*by;
+          ctx.lineTo(bx2, by2);
+        }
+      } else {
+        ctx.moveTo(ax, ay);
+        ctx.bezierCurveTo(cpx, cpy, cpx2, cpy2, bx, by);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // Draw dots for points that have been reached
+    PTS.forEach((pt, i) => {
+      const dotThreshold = i / totalSegs;
+      if (p < dotThreshold) return;
+
+      const dotFade = Math.min((p - dotThreshold) * totalSegs * 3, 1);
+      const x = tx(pt.t), y = ty(pt.y);
+
+      // Glow
+      ctx.shadowColor = pt.c;
+      ctx.shadowBlur = pt.r * 2.5;
+      ctx.globalAlpha = dotFade;
+
+      // Outer glow ring
+      ctx.beginPath();
+      ctx.arc(x, y, pt.r + 3, 0, Math.PI * 2);
+      ctx.fillStyle = pt.c + '22';
+      ctx.fill();
+
+      // Main dot
+      ctx.beginPath();
+      ctx.arc(x, y, pt.r, 0, Math.PI * 2);
+      ctx.fillStyle = pt.c;
+      ctx.fill();
+
+      // White center sparkle
+      ctx.beginPath();
+      ctx.arc(x, y, pt.r * 0.35, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+
+      // Label (fade in slightly later)
+      const labelFade = Math.min((p - dotThreshold) * totalSegs * 5 - 0.5, 1);
+      if (labelFade > 0) {
+        ctx.globalAlpha = labelFade * 0.75;
+        ctx.fillStyle = pt.c;
+        ctx.font = "10px 'Segoe UI', system-ui, sans-serif";
+        ctx.textAlign = x > LW * 0.75 ? 'right' : x < LW * 0.25 ? 'left' : 'center';
+        const labelY = y - pt.r - 8;
+        ctx.fillText(pt.lbl, x + (x > LW * 0.75 ? -pt.r - 2 : x < LW * 0.25 ? pt.r + 2 : 0), Math.max(labelY, PAD.top + 10));
+        ctx.globalAlpha = 1;
+      }
+    });
+  }
+
+  function animate(ts) {
+    if (!startTime) startTime = ts;
+    const elapsed = ts - startTime;
+    const eased = elapsed / DURATION;
+    // Ease out cubic
+    progress = Math.min(1 - Math.pow(1 - Math.min(eased, 1), 3), 1);
+    draw(progress);
+    if (progress < 1) requestAnimationFrame(animate);
+  }
+
+  // Start animation when chart enters viewport
+  const obs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      obs.disconnect();
+      requestAnimationFrame(animate);
+    }
+  }, { threshold: 0.2 });
+  obs.observe(canvas);
+})();
+
+/* ── Auto-refresh ── */
+(function() {
+  var last = '';
+  setInterval(function() {
+    fetch(location.href, { cache: 'no-store' })
+      .then(r => r.text())
+      .then(html => { if (last && html !== last) location.reload(); last = html; })
+      .catch(function(){});
+  }, 2000);
+})();
+</script>
+</body>
+</html>

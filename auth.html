@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Auth Explorer · Web Authorization</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(200,150,255,0.18);
+      --purple: #c77dff;
+      --cyan: #90e0ef;
+      --green: #80ffb4;
+      --pink: #ff6b9d;
+      --gold: #ffd060;
+      --text: #ddd0ff;
+      --muted: rgba(200,180,255,0.45);
+    }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #07071a 0%, #030308 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 24px;
+      background: rgba(3,3,8,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav a {
+      color: var(--muted); text-decoration: none;
+      font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .nav a:hover { color: var(--purple); }
+    .nav-sep { color: rgba(200,150,255,0.25); font-size: 0.8rem; }
+    .nav-title { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--purple); }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 52px 24px 36px; }
+    .hero h1 {
+      font-size: clamp(1.4rem, 5vw, 2.2rem); font-weight: 300;
+      letter-spacing: 0.12em;
+      background: linear-gradient(90deg, #c77dff, #90e0ef, #c77dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 12px;
+    }
+    .hero p { font-size: 0.82rem; color: var(--muted); max-width: 500px; margin: 0 auto; line-height: 1.65; letter-spacing: 0.03em; }
+
+    /* ── Layout ── */
+    .section { max-width: 860px; margin: 0 auto 56px; padding: 0 20px; }
+    .section-label {
+      font-size: 0.6rem; letter-spacing: 0.26em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Flow Stage ── */
+    .flow-stage {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px 20px 20px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      min-height: 200px;
+    }
+    .actors {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: relative;
+    }
+    .actor {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      flex: 0 0 80px; position: relative;
+    }
+    .actor-icon {
+      width: 58px; height: 58px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+      border: 1px solid var(--border);
+      background: rgba(200,150,255,0.06);
+      transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+    }
+    .actor-icon.active {
+      border-color: var(--purple);
+      background: rgba(200,150,255,0.14);
+      box-shadow: 0 0 22px rgba(199,125,255,0.35);
+    }
+    .actor-icon.busy { animation: actorBusy 1.4s ease-in-out infinite; }
+    @keyframes actorBusy {
+      0%,100% { box-shadow: 0 0 8px rgba(199,125,255,0.2); }
+      50% { box-shadow: 0 0 28px rgba(199,125,255,0.6); border-color: var(--purple); }
+    }
+    .actor-label {
+      font-size: 0.6rem; letter-spacing: 0.1em; text-align: center;
+      color: var(--muted); text-transform: uppercase; line-height: 1.4;
+    }
+    .actor-lifeline {
+      position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
+      width: 1px; height: 100px;
+      background: linear-gradient(to bottom, rgba(200,150,255,0.2), transparent);
+    }
+
+    /* Packet animation */
+    .packet-fly {
+      position: absolute; top: 100px;
+      display: flex; align-items: center; gap: 6px;
+      pointer-events: none; z-index: 10;
+    }
+    .packet-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--purple); box-shadow: 0 0 8px var(--purple);
+      flex-shrink: 0;
+    }
+    .packet-lbl {
+      font: 0.62rem 'Courier New', monospace;
+      color: var(--cyan);
+      background: rgba(3,3,8,0.92);
+      padding: 3px 9px; border-radius: 6px;
+      border: 1px solid rgba(144,224,239,0.3);
+      white-space: nowrap;
+    }
+
+    /* Arrow lines */
+    .arrow-svg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 2;
+    }
+
+    /* ── Step Info ── */
+    .step-info {
+      background: rgba(199,125,255,0.04);
+      border: 1px solid rgba(199,125,255,0.14);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      min-height: 96px;
+      transition: opacity 0.2s;
+    }
+    .step-num { font-size: 0.57rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--purple); margin-bottom: 5px; }
+    .step-name { font-size: 1rem; font-weight: 400; letter-spacing: 0.06em; margin-bottom: 8px; }
+    .step-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.65; }
+    .step-code {
+      margin-top: 10px;
+      font: 0.7rem 'Courier New', monospace;
+      color: var(--cyan);
+      background: rgba(0,0,0,0.35);
+      padding: 10px 14px; border-radius: 8px;
+      border-left: 2px solid rgba(144,224,239,0.5);
+      white-space: pre;
+    }
+
+    /* Controls */
+    .flow-controls { display: flex; align-items: center; gap: 12px; }
+    .flow-btn {
+      background: linear-gradient(135deg,rgba(150,80,255,0.2),rgba(80,40,180,0.2));
+      border: 1px solid rgba(200,150,255,0.35); border-radius: 10px;
+      padding: 10px 22px; color: #e8d8ff; font-size: 0.76rem; cursor: pointer;
+      letter-spacing: 0.1em; text-transform: uppercase; font-family: inherit;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+    }
+    .flow-btn:hover:not(:disabled) { border-color: var(--purple); background: rgba(150,80,255,0.28); }
+    .flow-btn:active:not(:disabled) { transform: scale(0.97); }
+    .flow-btn:disabled { opacity: 0.28; cursor: not-allowed; }
+    .step-dots { display: flex; gap: 7px; flex: 1; justify-content: center; }
+    .step-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(200,150,255,0.2); transition: all 0.3s;
+    }
+    .step-dot.done { background: rgba(199,125,255,0.45); }
+    .step-dot.active { background: var(--purple); box-shadow: 0 0 7px var(--purple); transform: scale(1.4); }
+
+    /* ── JWT Section ── */
+    .jwt-token {
+      font: clamp(0.58rem,1.5vw,0.75rem) 'Courier New', monospace;
+      word-break: break-all; line-height: 1.9;
+      padding: 20px; background: rgba(0,0,0,0.35);
+      border-radius: 14px; margin-bottom: 20px;
+      border: 1px solid var(--border);
+      letter-spacing: 0.02em; cursor: default; user-select: all;
+    }
+    .j-h { color: var(--pink); }
+    .j-p { color: var(--cyan); }
+    .j-s { color: var(--green); }
+    .j-sep { color: rgba(255,255,255,0.22); }
+
+    .jwt-panels { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+    @media(max-width:580px){ .jwt-panels { grid-template-columns:1fr; } }
+    .jwt-panel {
+      background: rgba(0,0,0,0.28); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px; cursor: pointer; transition: all 0.2s;
+    }
+    .jwt-panel:hover { background: rgba(255,255,255,0.05); }
+    .jwt-panel.header  { border-top: 2px solid var(--pink); }
+    .jwt-panel.payload { border-top: 2px solid var(--cyan); }
+    .jwt-panel.sig     { border-top: 2px solid var(--green); }
+    .jwt-panel.selected { background: rgba(255,255,255,0.07); box-shadow: 0 0 16px rgba(199,125,255,0.1); }
+    .jp-title { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600; margin-bottom: 12px; }
+    .jwt-panel.header  .jp-title { color: var(--pink); }
+    .jwt-panel.payload .jp-title { color: var(--cyan); }
+    .jwt-panel.sig     .jp-title { color: var(--green); }
+    .jp-desc { font-size: 0.72rem; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+    .jp-decoded { font: 0.68rem 'Courier New', monospace; line-height: 1.8; }
+    .jp-key { color: var(--text); }
+    .jp-str { color: var(--gold); }
+    .jp-num { color: var(--cyan); }
+    .jp-bool { color: var(--green); }
+
+    /* Signature formula */
+    .sig-formula {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      font: 0.68rem 'Courier New', monospace;
+      padding: 16px; background: rgba(0,0,0,0.35);
+      border-radius: 10px; border: 1px solid rgba(128,255,180,0.2);
+      margin-top: 14px;
+    }
+    .sf-box { padding: 5px 10px; border-radius: 6px; white-space: nowrap; }
+    .sf-fn { color: var(--green); }
+    .sf-part { background: rgba(255,255,255,0.06); color: var(--text); }
+    .sf-arrow { color: var(--muted); }
+
+    /* ── Concept Cards ── */
+    .concepts-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 14px; }
+    .concept-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px; transition: all 0.2s;
+    }
+    .concept-card:hover { border-color: rgba(200,150,255,0.38); background: rgba(255,255,255,0.06); }
+    .cc-icon { font-size: 1.4rem; margin-bottom: 10px; }
+    .cc-name { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--purple); margin-bottom: 8px; }
+    .cc-desc { font-size: 0.74rem; color: var(--muted); line-height: 1.6; }
+
+    /* Footer link */
+    .back-link {
+      text-align: center; padding: 40px 20px;
+      font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .back-link a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    .back-link a:hover { color: var(--purple); }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html">✦ Garden</a>
+  <span class="nav-sep">/</span>
+  <span class="nav-title">Auth Explorer</span>
+  <a href="resume.html" style="margin-left:auto;color:var(--muted);font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;text-decoration:none;">Resume →</a>
+</nav>
+
+<div class="hero">
+  <h1>✦ WEB AUTH EXPLORER ✦</h1>
+  <p>An interactive walkthrough of how modern web authorization works — from login to JWT issuance to token-based access control.</p>
+</div>
+
+<!-- ── Section 1: The Flow ── -->
+<div class="section">
+  <div class="section-label">01 · The Authorization Flow</div>
+
+  <div class="flow-stage" id="flowStage">
+    <svg class="arrow-svg" id="arrowSvg"></svg>
+    <div class="actors">
+      <div class="actor">
+        <div class="actor-icon" id="actor-client">🖥️</div>
+        <div class="actor-lifeline"></div>
+        <div class="actor-label">Client<br>Browser</div>
+      </div>
+      <div class="actor">
+        <div class="actor-icon" id="actor-auth">🔐</div>
+        <div class="actor-lifeline"></div>
+        <div class="actor-label">Auth<br>Server</div>
+      </div>
+      <div class="actor">
+        <div class="actor-icon" id="actor-resource">🗄️</div>
+        <div class="actor-lifeline"></div>
+        <div class="actor-label">Resource<br>Server</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-info" id="stepInfo">
+    <div class="step-num" id="stepNum">Step 0 of 7</div>
+    <div class="step-name" id="stepName">Ready to begin</div>
+    <div class="step-desc" id="stepDesc">Press <strong>Next</strong> to walk through the authorization flow step by step.</div>
+  </div>
+
+  <div class="flow-controls">
+    <button class="flow-btn" id="prevBtn" disabled>← Prev</button>
+    <div class="step-dots" id="stepDots"></div>
+    <button class="flow-btn" id="nextBtn">Next →</button>
+  </div>
+</div>
+
+<!-- ── Section 2: JWT Anatomy ── -->
+<div class="section">
+  <div class="section-label">02 · JWT Anatomy</div>
+  <p style="font-size:0.8rem;color:var(--muted);line-height:1.65;margin-bottom:20px;">
+    A JSON Web Token is three Base64URL-encoded strings joined by dots. Each part has a distinct role — click a panel to explore it.
+  </p>
+
+  <div class="jwt-token" id="jwtDisplay">
+    <span class="j-h">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span><span class="j-sep">.</span><span class="j-p">eyJzdWIiOiJ1c2VyXzEyMyIsIm5hbWUiOiJBbGljZSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ</span><span class="j-sep">.</span><span class="j-s">SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</span>
+  </div>
+
+  <div class="jwt-panels">
+    <div class="jwt-panel header" id="panel-header">
+      <div class="jp-title">Header</div>
+      <div class="jp-desc">Declares the token type and signing algorithm.</div>
+      <div class="jp-decoded">
+        <span class="jp-key">"alg"</span>: <span class="jp-str">"HS256"</span><br>
+        <span class="jp-key">"typ"</span>: <span class="jp-str">"JWT"</span>
+      </div>
+    </div>
+    <div class="jwt-panel payload" id="panel-payload">
+      <div class="jp-title">Payload</div>
+      <div class="jp-desc">Carries claims — facts about the user and token lifecycle.</div>
+      <div class="jp-decoded">
+        <span class="jp-key">"sub"</span>: <span class="jp-str">"user_123"</span><br>
+        <span class="jp-key">"name"</span>: <span class="jp-str">"Alice"</span><br>
+        <span class="jp-key">"role"</span>: <span class="jp-str">"admin"</span><br>
+        <span class="jp-key">"iat"</span>: <span class="jp-num">1700000000</span><br>
+        <span class="jp-key">"exp"</span>: <span class="jp-num">1700003600</span>
+      </div>
+    </div>
+    <div class="jwt-panel sig" id="panel-sig">
+      <div class="jp-title">Signature</div>
+      <div class="jp-desc">Cryptographic proof that the token hasn't been tampered with.</div>
+      <div class="sig-formula">
+        <span class="sf-fn">HMACSHA256</span><span style="color:var(--muted)">(</span>
+        <span class="sf-box sf-part">base64(header)</span>
+        <span class="sf-arrow">+</span>
+        <span style="color:var(--muted)">"."</span>
+        <span class="sf-arrow">+</span>
+        <span class="sf-box sf-part">base64(payload)</span>
+        <span class="sf-arrow">,</span>
+        <span class="sf-box" style="color:var(--gold)">secret</span>
+        <span style="color:var(--muted)">)</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <div style="font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Why it works</div>
+    <p style="font-size:0.8rem;color:var(--muted);line-height:1.7;">
+      The <span style="color:var(--pink)">header</span> and <span style="color:var(--cyan)">payload</span> are just Base64URL-encoded — anyone can read them. The <span style="color:var(--green)">signature</span> is what makes the token trustworthy: it's computed using a secret key only the auth server knows. If an attacker modifies any claim in the payload, the signature won't match and the resource server rejects the request.
+    </p>
+  </div>
+</div>
+
+<!-- ── Section 3: Key Concepts ── -->
+<div class="section">
+  <div class="section-label">03 · Key Concepts</div>
+  <div class="concepts-grid">
+    <div class="concept-card">
+      <div class="cc-icon">🎫</div>
+      <div class="cc-name">Bearer Token</div>
+      <div class="cc-desc">Whoever holds the token can use it. Sent in every API request via the <code style="color:var(--cyan);font-size:0.7rem">Authorization: Bearer &lt;token&gt;</code> header.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">📋</div>
+      <div class="cc-name">Claims</div>
+      <div class="cc-desc">Key-value facts embedded in the payload. Standard claims: <code style="color:var(--cyan);font-size:0.7rem">sub</code> (subject), <code style="color:var(--cyan);font-size:0.7rem">iat</code> (issued at), <code style="color:var(--cyan);font-size:0.7rem">exp</code> (expiration). You can add custom ones.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">⏳</div>
+      <div class="cc-name">Expiration</div>
+      <div class="cc-desc">JWTs have a short lifetime (minutes to hours). After <code style="color:var(--cyan);font-size:0.7rem">exp</code>, the token is invalid — limiting damage if it's stolen.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">🔑</div>
+      <div class="cc-name">Signing Keys</div>
+      <div class="cc-desc">HS256 uses a shared secret. RS256 uses a private key to sign, public key to verify — better for distributed systems.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">♻️</div>
+      <div class="cc-name">Refresh Tokens</div>
+      <div class="cc-desc">A long-lived token stored securely. Used to fetch a new access token when the old one expires — without asking the user to re-login.</div>
+    </div>
+    <div class="concept-card">
+      <div class="cc-icon">🔒</div>
+      <div class="cc-name">HTTPS Only</div>
+      <div class="cc-desc">Tokens are credentials. Always transmit over TLS. A token captured over plain HTTP gives an attacker full access until expiration.</div>
+    </div>
+  </div>
+</div>
+
+<div class="back-link"><a href="index.html">← Back to the Garden</a></div>
+
+<script>
+/* ── Flow Steps ── */
+const STEPS = [
+  {
+    from: null, to: null, internal: null,
+    name: 'Ready to begin',
+    desc: 'Press Next to walk through the authorization flow step by step.',
+    code: null,
+  },
+  {
+    from: 'client', to: 'auth', internal: null,
+    name: '1 · Login Request',
+    desc: 'The user submits their credentials. The client sends them over HTTPS — never plain HTTP — so they can\'t be intercepted in transit.',
+    code: 'POST /auth/login HTTP/1.1\n{ "username": "alice", "password": "••••••" }',
+    packet: 'POST /auth/login',
+  },
+  {
+    from: null, to: null, internal: 'auth',
+    name: '2 · Verify Identity',
+    desc: 'The auth server looks up the user in the database, checks the password hash (bcrypt / Argon2), and confirms the account is active.',
+    code: '// Auth Server internals\nconst hash = await db.getPasswordHash("alice");\nawait bcrypt.compare(password, hash); // ✓',
+    packet: null,
+  },
+  {
+    from: null, to: null, internal: 'auth',
+    name: '3 · Build the JWT',
+    desc: 'With identity confirmed, the auth server constructs a JWT. It encodes a header and payload, then signs both with a secret key to produce the signature.',
+    code: 'header  = base64({ alg:"HS256", typ:"JWT" })\npayload = base64({ sub:"user_123", role:"admin",\n                   iat:now, exp:now+3600 })\ntoken   = header + "." + payload + "." + sign(header+"."+payload)',
+    packet: null,
+  },
+  {
+    from: 'auth', to: 'client', internal: null,
+    name: '4 · Token Delivered',
+    desc: 'The JWT is returned to the client. It\'s typically stored in memory (most secure), an httpOnly cookie, or — less ideally — localStorage.',
+    code: 'HTTP/1.1 200 OK\n{ "access_token": "eyJhbGc…",\n  "token_type": "Bearer", "expires_in": 3600 }',
+    packet: '200 OK { access_token }',
+  },
+  {
+    from: 'client', to: 'resource', internal: null,
+    name: '5 · API Request with Token',
+    desc: 'For every protected request, the client attaches the JWT in the Authorization header. The resource server never sees the password — only the token.',
+    code: 'GET /api/data HTTP/1.1\nAuthorization: Bearer eyJhbGciOiJIUzI1NiJ9…',
+    packet: 'GET /api/data + Bearer token',
+  },
+  {
+    from: null, to: null, internal: 'resource',
+    name: '6 · Validate the Token',
+    desc: 'The resource server re-computes the signature using the same secret key. If it matches, the token is authentic. It also checks the expiry claim and any required roles.',
+    code: '// Resource Server\nconst valid = jwt.verify(token, SECRET_KEY);\n// Checks: signature ✓ | exp not passed ✓ | role:"admin" ✓',
+    packet: null,
+  },
+  {
+    from: 'resource', to: 'client', internal: null,
+    name: '7 · Access Granted',
+    desc: 'All checks passed. The resource server returns the protected data. No passwords were stored on the resource server — the JWT carried all necessary trust.',
+    code: 'HTTP/1.1 200 OK\n{ "data": [ ... ] }',
+    packet: '200 OK { data: [...] }',
+  },
+];
+
+let currentStep = 0;
+const totalSteps = STEPS.length - 1;
+
+const flowStage  = document.getElementById('flowStage');
+const arrowSvg   = document.getElementById('arrowSvg');
+const stepNum    = document.getElementById('stepNum');
+const stepName   = document.getElementById('stepName');
+const stepDesc   = document.getElementById('stepDesc');
+const prevBtn    = document.getElementById('prevBtn');
+const nextBtn    = document.getElementById('nextBtn');
+const dotsWrap   = document.getElementById('stepDots');
+
+// Build dots
+for (let i = 1; i <= totalSteps; i++) {
+  const d = document.createElement('div');
+  d.className = 'step-dot';
+  d.id = 'dot-' + i;
+  dotsWrap.appendChild(d);
+}
+
+function getActorCenter(id) {
+  const el = document.getElementById('actor-' + id);
+  const stageRect = flowStage.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  return {
+    x: rect.left + rect.width / 2 - stageRect.left,
+    y: rect.top + rect.height / 2 - stageRect.top,
+  };
+}
+
+function flashActor(id, cls) {
+  const el = document.getElementById('actor-' + id);
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), cls === 'busy' ? 1600 : 1200);
+}
+
+function drawArrow(fromId, toId) {
+  const from = getActorCenter(fromId);
+  const to   = getActorCenter(toId);
+  const y = from.y + 58; // below icon
+  arrowSvg.innerHTML = '';
+  // line
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1', from.x); line.setAttribute('y1', y);
+  line.setAttribute('x2', to.x);   line.setAttribute('y2', y);
+  line.setAttribute('stroke','rgba(199,125,255,0.4)');
+  line.setAttribute('stroke-width','1');
+  line.setAttribute('stroke-dasharray','4 4');
+  arrowSvg.appendChild(line);
+}
+
+function clearArrow() { arrowSvg.innerHTML = ''; }
+
+function flyPacket(fromId, toId, label) {
+  const from = getActorCenter(fromId);
+  const to   = getActorCenter(toId);
+  const y = from.y + 50;
+
+  const el = document.createElement('div');
+  el.className = 'packet-fly';
+  el.style.top = y + 'px';
+  el.innerHTML = '<div class="packet-dot"></div><div class="packet-lbl">' + label + '</div>';
+  flowStage.appendChild(el);
+
+  el.animate([
+    { left: from.x + 'px', opacity: 0 },
+    { left: from.x + 'px', opacity: 1, offset: 0.08 },
+    { left: to.x   + 'px', opacity: 1, offset: 0.92 },
+    { left: to.x   + 'px', opacity: 0 },
+  ], {
+    duration: 900,
+    easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  }).onfinish = () => el.remove();
+}
+
+function clearActors() {
+  ['client','auth','resource'].forEach(id => {
+    const el = document.getElementById('actor-' + id);
+    el.classList.remove('active','busy');
+  });
+}
+
+function renderStep(idx) {
+  const s = STEPS[idx];
+
+  // Info panel
+  stepNum.textContent  = idx === 0 ? '' : 'Step ' + idx + ' of ' + totalSteps;
+  stepName.textContent = s.name;
+  stepDesc.innerHTML   = s.desc;
+
+  const existingCode = document.getElementById('stepCode');
+  if (existingCode) existingCode.remove();
+  if (s.code) {
+    const pre = document.createElement('pre');
+    pre.id = 'stepCode';
+    pre.className = 'step-code';
+    pre.textContent = s.code;
+    document.getElementById('stepInfo').appendChild(pre);
+  }
+
+  // Dots
+  for (let i = 1; i <= totalSteps; i++) {
+    const d = document.getElementById('dot-' + i);
+    d.className = 'step-dot' + (i < idx ? ' done' : i === idx ? ' active' : '');
+  }
+
+  // Buttons
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === totalSteps;
+  nextBtn.textContent = idx === totalSteps ? 'Done ✓' : 'Next →';
+
+  // Actors & animation
+  clearActors();
+  clearArrow();
+
+  if (s.from && s.to) {
+    flashActor(s.from, 'active');
+    drawArrow(s.from, s.to);
+    if (s.packet) flyPacket(s.from, s.to, s.packet);
+    setTimeout(() => {
+      flashActor(s.to, 'active');
+    }, 500);
+  } else if (s.internal) {
+    flashActor(s.internal, 'busy');
+  }
+}
+
+prevBtn.addEventListener('click', () => {
+  if (currentStep > 0) { currentStep--; renderStep(currentStep); }
+});
+nextBtn.addEventListener('click', () => {
+  if (currentStep < totalSteps) { currentStep++; renderStep(currentStep); }
+});
+
+renderStep(0);
+
+/* ── JWT Panel interaction ── */
+['header','payload','sig'].forEach(part => {
+  const panel = document.getElementById('panel-' + part);
+  panel.addEventListener('click', () => {
+    document.querySelectorAll('.jwt-panel').forEach(p => p.classList.remove('selected'));
+    panel.classList.add('selected');
+  });
+});
+
+/* ── Auto-refresh (browser-sync compatible) ── */
+(function() {
+  var last = '', lastTyped = 0;
+  setInterval(function() {
+    if (Date.now() - lastTyped < 3000) return;
+    fetch(location.href, { cache: 'no-store' })
+      .then(r => r.text())
+      .then(html => { if (last && html !== last) location.reload(); last = html; })
+      .catch(function(){});
+  }, 2000);
+})();
+</script>
+</body>
+</html>
