@@ -14,6 +14,7 @@ A collection of small web apps and tools.
 | `/garden` | Mohana's Garden |
 | `/spots` | Midday Spots |
 | `/auth` | Auth Explorer |
+| `/local-inference` | Local Inference |
 
 ### Resume
 Steve Johnson's resume — career timeline, trajectory chart, and tech stack.
@@ -36,11 +37,14 @@ Uses your GPS coordinates to recommend 2 nearby dog-friendly cafes — hidden ge
 ### Auth Explorer
 Interactive walkthrough of web authorization flows.
 
+### Local Inference
+Chat with Llama 3.2 running locally via Ollama — no cloud, no API key. Supports 1B and 3B model selection with token-by-token streaming.
+
 ## Setup
 
 1. Install dependencies:
    ```bash
-   pip install flask flask-cors anthropic groq python-dotenv
+   pip install flask flask-cors anthropic groq python-dotenv requests
    ```
 
 2. Create a `.env` file:
@@ -49,11 +53,16 @@ Interactive walkthrough of web authorization flows.
    GROQ_API_KEY=your_key_here
    ```
 
-3. Run:
+3. For local inference, install [Ollama](https://ollama.com) and pull a model:
+   ```bash
+   ollama pull llama3.2:1b
+   ```
+
+4. Run:
    ```bash
    python server.py
    ```
 
-4. Open `http://localhost:3000`
+5. Open `http://localhost:3000`
 
-**Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · Llama 3.1 via Groq · Vanilla HTML/CSS/JS
+**Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · Llama 3.1 via Groq · Llama 3.2 via Ollama (local) · Vanilla HTML/CSS/JS
