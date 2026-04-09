@@ -44,6 +44,6 @@ Steve Johnson's resume.
    python server.py
    ```
 
-4. Open `http://localhost:8080`
+4. Open `http://localhost:3000`
 
 **Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · Vanilla HTML/CSS/JS
