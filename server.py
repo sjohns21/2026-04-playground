@@ -4,7 +4,6 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import anthropic
 from groq import Groq
-import fal_client
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -81,23 +80,6 @@ def identify():
         result = {"raw": raw}
 
     return jsonify(result)
-
-
-@app.route("/image-gen")
-def image_gen():
-    return send_from_directory(".", "image-gen.html")
-
-
-@app.route("/image-gen-api", methods=["POST"])
-def image_gen_api():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    result = fal_client.run(
-        "fal-ai/flux/schnell",
-        arguments={"prompt": prompt, "image_size": "square_hd", "num_images": 1}
-    )
-    url = result["images"][0]["url"]
-    return jsonify({"url": url})
 
 
 @app.route("/chat")
