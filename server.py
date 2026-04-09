@@ -59,11 +59,10 @@ try:
     class _State(TypedDict):
         messages: Annotated[list, _op.add]
 
-    _lg_llm = ChatAnthropic(model="claude-sonnet-4-6")
-    _lg_llm_bound = _lg_llm.bind_tools(_lg_tools)
-
     def _agent(state: _State):
-        return {"messages": [_lg_llm_bound.invoke(state["messages"])]}
+        key = os.environ.get("ANTHROPIC_API_KEY")
+        llm = ChatAnthropic(model="claude-sonnet-4-6", **{"api_key": key} if key else {})
+        return {"messages": [llm.bind_tools(_lg_tools).invoke(state["messages"])]}
 
     def _route(state: _State) -> str:
         last = state["messages"][-1]
