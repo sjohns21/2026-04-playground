@@ -17,68 +17,51 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
-# LangGraph demo setup
-try:
-    from langgraph.graph import StateGraph, END as LG_END
-    from langgraph.prebuilt import ToolNode
-    from langchain_anthropic import ChatAnthropic
-    from langchain_core.tools import tool as lc_tool
-    from langchain_core.messages import HumanMessage as LGHuman, AIMessage as LGAi, ToolMessage as LGTool
-    from typing import TypedDict, Annotated
-    import operator as _op
+# LangGraph demo — tools and ReAct loop using the existing anthropic client directly
 
-    @lc_tool
-    def calculator(expression: str) -> str:
-        """Evaluate a math expression using standard Python syntax, e.g. '2 + 2' or '3.14159 * 7 ** 2'."""
-        allowed = set('0123456789+-*/().% eE ')
-        if not all(c in allowed for c in expression):
-            return "Error: only numeric and basic operator characters are allowed."
-        try:
-            result = eval(expression, {"__builtins__": {}}, {})
-            return str(result)
-        except Exception as e:
-            return f"Error: {e}"
+def _calc(expression: str) -> str:
+    allowed = set('0123456789+-*/().% eE ')
+    if not all(c in allowed for c in expression):
+        return "Error: only numeric and basic operator characters are allowed."
+    try:
+        return str(eval(expression, {"__builtins__": {}}, {}))
+    except Exception as e:
+        return f"Error: {e}"
 
-    @lc_tool
-    def word_counter(text: str) -> str:
-        """Count the number of words and characters in a given piece of text."""
-        words = len(text.split())
-        chars_total = len(text)
-        chars_no_spaces = len(text.replace(' ', ''))
-        return f"{words} words, {chars_total} total characters ({chars_no_spaces} without spaces)"
+def _word_count(text: str) -> str:
+    words = len(text.split())
+    return f"{words} words, {len(text)} total characters ({len(text.replace(' ', ''))} without spaces)"
 
-    @lc_tool
-    def current_time() -> str:
-        """Return the current UTC date and time."""
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc)
-        return now.strftime("UTC: %A %B %d, %Y — %H:%M:%S")
+def _time_now() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("UTC: %A %B %d, %Y — %H:%M:%S")
 
-    _lg_tools = [calculator, word_counter, current_time]
+_LG_TOOLS_SCHEMA = [
+    {
+        "name": "calculator",
+        "description": "Evaluate a math expression using standard Python syntax, e.g. '2 + 2' or '3.14159 * 7 ** 2'.",
+        "input_schema": {"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]},
+    },
+    {
+        "name": "word_counter",
+        "description": "Count the number of words and characters in a given piece of text.",
+        "input_schema": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]},
+    },
+    {
+        "name": "current_time",
+        "description": "Return the current UTC date and time.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+]
 
-    class _State(TypedDict):
-        messages: Annotated[list, _op.add]
-
-    def _agent(state: _State):
-        key = os.environ.get("ANTHROPIC_API_KEY")
-        llm = ChatAnthropic(model="claude-sonnet-4-6", **{"api_key": key} if key else {})
-        return {"messages": [llm.bind_tools(_lg_tools).invoke(state["messages"])]}
-
-    def _route(state: _State) -> str:
-        last = state["messages"][-1]
-        return "tools" if (getattr(last, "tool_calls", None)) else LG_END
-
-    _lg_graph = StateGraph(_State)
-    _lg_graph.add_node("agent", _agent)
-    _lg_graph.add_node("tools", ToolNode(_lg_tools))
-    _lg_graph.set_entry_point("agent")
-    _lg_graph.add_conditional_edges("agent", _route)
-    _lg_graph.add_edge("tools", "agent")
-    _lg_app = _lg_graph.compile()
-    _LG_OK = True
-
-except ImportError:
-    _LG_OK = False
+def _run_tool(name, args):
+    if name == "calculator":
+        return _calc(args.get("expression", ""))
+    if name == "word_counter":
+        return _word_count(args.get("text", ""))
+    if name == "current_time":
+        return _time_now()
+    return f"Unknown tool: {name}"
 
 
 @app.route("/")
@@ -217,6 +200,11 @@ def fullstack():
     return send_from_directory(".", "fullstack.html")
 
 
+@app.route("/insforge")
+def insforge():
+    return send_from_directory(".", "insforge.html")
+
+
 @app.route("/llm-explainer")
 def llm_explainer():
     return send_from_directory(".", "llm-explainer.html")
@@ -279,55 +267,50 @@ def langgraph_demo_page():
 
 @app.route("/langgraph-api", methods=["POST"])
 def langgraph_api():
-    if not _LG_OK:
-        return jsonify({"error": "LangGraph not installed. Run: pip install langgraph langchain-anthropic"}), 500
-
     data = request.get_json()
     msg = (data or {}).get("message", "").strip()
     if not msg:
         return jsonify({"error": "No message provided"}), 400
 
     def generate():
+        messages = [{"role": "user", "content": msg}]
         try:
-            for step in _lg_app.stream(
-                {"messages": [LGHuman(content=msg)]},
-                stream_mode="updates",
-            ):
-                for node_name, update in step.items():
-                    for m in update.get("messages", []):
-                        if isinstance(m, LGAi):
-                            if isinstance(m.content, list):
-                                text = " ".join(
-                                    b.get("text", "") for b in m.content
-                                    if isinstance(b, dict) and b.get("type") == "text"
-                                )
-                            else:
-                                text = m.content or ""
+            while True:
+                response = client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=1024,
+                    tools=_LG_TOOLS_SCHEMA,
+                    messages=messages,
+                )
 
-                            if getattr(m, "tool_calls", None):
-                                yield json.dumps({
-                                    "node": "agent",
-                                    "type": "tool_calls",
-                                    "tool_calls": [
-                                        {"name": tc["name"], "args": tc["args"]}
-                                        for tc in m.tool_calls
-                                    ],
-                                    "content": text,
-                                }) + "\n"
-                            else:
-                                yield json.dumps({
-                                    "node": "agent",
-                                    "type": "final",
-                                    "content": text,
-                                }) + "\n"
+                if response.stop_reason == "tool_use":
+                    tool_uses = [b for b in response.content if b.type == "tool_use"]
+                    text_parts = [b.text for b in response.content if hasattr(b, "text") and b.text]
+                    yield json.dumps({
+                        "node": "agent",
+                        "type": "tool_calls",
+                        "content": " ".join(text_parts),
+                        "tool_calls": [{"name": tc.name, "args": tc.input} for tc in tool_uses],
+                    }) + "\n"
 
-                        elif isinstance(m, LGTool):
-                            yield json.dumps({
-                                "node": "tools",
-                                "type": "tool_result",
-                                "tool": m.name,
-                                "content": m.content,
-                            }) + "\n"
+                    tool_results = []
+                    for tc in tool_uses:
+                        result = _run_tool(tc.name, tc.input)
+                        yield json.dumps({
+                            "node": "tools",
+                            "type": "tool_result",
+                            "tool": tc.name,
+                            "content": result,
+                        }) + "\n"
+                        tool_results.append({"type": "tool_result", "tool_use_id": tc.id, "content": result})
+
+                    messages.append({"role": "assistant", "content": response.content})
+                    messages.append({"role": "user", "content": tool_results})
+
+                else:
+                    text = "".join(b.text for b in response.content if hasattr(b, "text"))
+                    yield json.dumps({"node": "agent", "type": "final", "content": text}) + "\n"
+                    break
 
         except Exception as e:
             yield json.dumps({"error": str(e)}) + "\n"
