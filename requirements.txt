@@ -1,0 +1,7 @@
+Flask
+flask-cors
+anthropic
+groq
+python-dotenv
+requests
+gunicorn

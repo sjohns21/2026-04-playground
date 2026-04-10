@@ -60,7 +60,7 @@ A ReAct agent built with LangGraph and Claude. The agent decides when to call to
 
 1. Install dependencies:
    ```bash
-   pip install flask flask-cors anthropic groq python-dotenv requests langgraph langchain-anthropic
+   pip install -r requirements.txt
    ```
 
 2. Create a `.env` file:
@@ -82,3 +82,19 @@ A ReAct agent built with LangGraph and Claude. The agent decides when to call to
 5. Open `http://localhost:3000`
 
 **Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · LangGraph · Llama 3.1 via Groq · Llama 3.2 via Ollama (local) · Vanilla HTML/CSS/JS
+
+## Deploy To Render
+
+1. Push this repo to GitHub.
+2. In Render, create a new service using `render.yaml` (Blueprint deploy).
+3. Set required secrets in Render:
+   - `ANTHROPIC_API_KEY`
+   - `GROQ_API_KEY`
+   - `INSFORGE_BASE_URL`
+   - `INSFORGE_ANON_KEY` (or `INSFORGE_API_KEY`)
+4. Deploy.
+
+Notes:
+- Production uses Gunicorn with `server:app`.
+- Health check endpoint is `GET /healthz`.
+- `ENABLE_LOCAL_INFERENCE=false` by default in Render because Ollama is local-only.

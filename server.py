@@ -13,6 +13,8 @@ load_dotenv()
 
 # InsForge dashboard / CLI project for this playground (override with INSFORGE_PROJECT_ID in .env).
 INSFORGE_PLAYGROUND_PROJECT_ID = "e2944ada-92be-44d1-aa70-24dc9c9b2603"
+OLLAMA_BASE_URL = (os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434").rstrip("/")
+ENABLE_LOCAL_INFERENCE = (os.environ.get("ENABLE_LOCAL_INFERENCE") or "true").strip().lower() in {"1", "true", "yes", "on"}
 
 app = Flask(__name__, static_folder=".")
 CORS(app)
@@ -162,13 +164,19 @@ def local_inference():
 
 @app.route("/local-inference-api", methods=["POST"])
 def local_inference_api():
+    if not ENABLE_LOCAL_INFERENCE:
+        return jsonify({
+            "error": "Local inference is disabled in this environment.",
+            "code": "LOCAL_INFERENCE_DISABLED",
+        }), 503
+
     data = request.get_json()
     messages = data.get("messages", [])
     model = data.get("model", "llama3.2:1b")
 
     def generate():
         resp = requests.post(
-            "http://localhost:11434/api/chat",
+            f"{OLLAMA_BASE_URL}/api/chat",
             json={"model": model, "messages": messages, "stream": True},
             stream=True,
             timeout=120,
@@ -182,6 +190,11 @@ def local_inference_api():
                 yield json.dumps({"content": content}) + "\n"
 
     return Response(stream_with_context(generate()), mimetype="text/plain")
+
+
+@app.route("/healthz", methods=["GET"])
+def healthz():
+    return jsonify({"ok": True}), 200
 
 
 @app.route("/garden")
@@ -478,4 +491,6 @@ def langgraph_api():
 
 
 if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+    port = int(os.environ.get("PORT", "3000"))
+    debug = (os.environ.get("FLASK_DEBUG") or "").strip().lower() in {"1", "true", "yes", "on"}
+    app.run(host="0.0.0.0", port=port, debug=debug)
