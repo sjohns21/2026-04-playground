@@ -83,18 +83,31 @@ A ReAct agent built with LangGraph and Claude. The agent decides when to call to
 
 **Stack:** Python / Flask · Claude (`claude-sonnet-4-6`) · LangGraph · Llama 3.1 via Groq · Llama 3.2 via Ollama (local) · Vanilla HTML/CSS/JS
 
-## Deploy To Render
+## Deploy To Railway
+
+### GitHub Auto-Deploy
 
 1. Push this repo to GitHub.
-2. In Render, create a new service using `render.yaml` (Blueprint deploy).
-3. Set required secrets in Render:
+2. In Railway, create a new project from `sjohns21/2026-04-playground`.
+3. Railway will use `railway.json` for build and start commands.
+4. Set required variables in Railway:
    - `ANTHROPIC_API_KEY`
    - `GROQ_API_KEY`
    - `INSFORGE_BASE_URL`
    - `INSFORGE_ANON_KEY` (or `INSFORGE_API_KEY`)
-4. Deploy.
+   - `ENABLE_LOCAL_INFERENCE=false`
+5. Deploy, then add a custom domain if needed.
+
+### CLI Deploy
+
+```bash
+npm i -g @railway/cli
+railway login
+railway link
+railway up
+```
 
 Notes:
 - Production uses Gunicorn with `server:app`.
 - Health check endpoint is `GET /healthz`.
-- `ENABLE_LOCAL_INFERENCE=false` by default in Render because Ollama is local-only.
+- Keep `ENABLE_LOCAL_INFERENCE=false` in cloud deploys because Ollama is local-only.
