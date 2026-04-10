@@ -216,6 +216,10 @@ def _insforge_config():
     return base, key, table
 
 
+def _insforge_ai_model():
+    return (os.environ.get("INSFORGE_AI_MODEL") or "openai/gpt-4o-mini").strip()
+
+
 def _insforge_project_id():
     return (os.environ.get("INSFORGE_PROJECT_ID") or INSFORGE_PLAYGROUND_PROJECT_ID).strip()
 
@@ -241,6 +245,7 @@ def insforge_api_config():
         "dashboardUrl": f"https://insforge.dev/dashboard/project/{project_id}",
         "table": table if ready else None,
         "baseHost": _insforge_base_host(base) if base else None,
+        "aiModel": _insforge_ai_model(),
     }
     if not ready:
         out["setup"] = (
@@ -305,6 +310,48 @@ def insforge_demo_records():
         return jsonify({"error": str(e)}), 502
     out = Response(r.content, status=r.status_code)
     ct = r.headers.get("Content-Type", "application/json")
+    if ct:
+        out.headers["Content-Type"] = ct
+    return out
+
+
+@app.route("/insforge-api/chat-completion", methods=["POST"])
+def insforge_chat_completion():
+    base, key, _ = _insforge_config()
+    if not base or not key:
+        return jsonify({"error": "InsForge not configured", "code": "NOT_CONFIGURED"}), 503
+
+    data = request.get_json(silent=True) or {}
+    prompt = (data.get("prompt") or "").strip()
+    if not prompt:
+        return jsonify({"error": "prompt is required"}), 400
+    if len(prompt) > 8000:
+        return jsonify({"error": "prompt too long (max 8000 characters)"}), 400
+
+    try:
+        max_tokens = int(data.get("maxTokens", 512))
+    except (TypeError, ValueError):
+        max_tokens = 512
+    max_tokens = max(64, min(max_tokens, 2048))
+
+    model = _insforge_ai_model()
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "maxTokens": max_tokens,
+        "temperature": 0.7,
+    }
+
+    url = f"{base}/api/ai/chat/completion"
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=120)
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 502
+
+    ct = r.headers.get("Content-Type", "application/json")
+    out = Response(r.content, status=r.status_code)
     if ct:
         out.headers["Content-Type"] = ct
     return out

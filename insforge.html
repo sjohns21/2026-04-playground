@@ -317,6 +317,30 @@
       padding-top: 20px;
       border-top: 1px solid var(--border);
     }
+    .gateway-reply {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 3.2em;
+    }
+    .gateway-reply.empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+    .gateway-meta {
+      margin-top: 10px;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -331,7 +355,8 @@
     <p class="lead">
       This page talks to your real <a href="https://insforge.dev/" target="_blank" rel="noopener noreferrer">InsForge</a>
       project through this playground server (credentials stay in <code style="font-size:0.85em">.env</code>, not in the browser).
-      Ping <code style="font-size:0.85em">/api/health</code>, then read and write rows via the database records API.
+      Ping <code style="font-size:0.85em">/api/health</code>, read and write rows via the database API, and call the
+      <strong>Model Gateway</strong> (<code style="font-size:0.85em">POST /api/ai/chat/completion</code>) for chat completions.
     </p>
     <p class="cli-caption">InsForge CLI · link this folder to your project</p>
     <div class="cli">
@@ -369,6 +394,21 @@
       <pre class="raw" id="db-error" hidden></pre>
     </div>
 
+    <div class="panel" id="panel-gateway">
+      <h2>Model Gateway</h2>
+      <p class="status-line" id="gateway-hint">
+        One-shot chat via InsForge AI (<code style="font-size:0.85em;color:var(--green)">POST …/api/ai/chat/completion</code>).
+        Model is set on the server (<code style="font-size:0.85em">INSFORGE_AI_MODEL</code>).
+      </p>
+      <textarea class="msg" id="gateway-prompt" style="min-height:72px" placeholder="Ask something short…" maxlength="8000" disabled></textarea>
+      <div class="row-actions">
+        <button type="button" class="primary" id="btn-gateway" disabled>Send</button>
+      </div>
+      <div class="gateway-reply empty" id="gateway-reply">Response will appear here.</div>
+      <p class="gateway-meta" id="gateway-meta" hidden></p>
+      <pre class="raw" id="gateway-error" hidden></pre>
+    </div>
+
     <h2 class="section-title">Platform</h2>
     <div class="features">
       <div class="feat"><h3>Postgres</h3><p>Tables exposed as REST with PostgREST-style filters.</p></div>
@@ -378,11 +418,12 @@
     <div class="links">
       <a href="https://insforge.dev/" target="_blank" rel="noopener noreferrer">insforge.dev</a>
       <a href="https://docs.insforge.dev/sdks/rest/database" target="_blank" rel="noopener noreferrer">Database API</a>
+      <a href="https://docs.insforge.dev/sdks/rest/ai" target="_blank" rel="noopener noreferrer">AI / Model Gateway</a>
       <a href="https://docs.insforge.dev/" target="_blank" rel="noopener noreferrer">Documentation</a>
     </div>
     <p class="note">
-      Unaffiliated demo page. Row Level Security and roles on your InsForge project must allow the anon key to
-      select and insert on the demo table, or requests will fail with 401/403.
+      Unaffiliated demo page. RLS on the demo table and AI quotas/permissions on your InsForge project apply; 401/403
+      means adjust policies or enable models in the dashboard.
     </p>
   </main>
   <script>
@@ -412,6 +453,11 @@
       var btnRefresh = document.getElementById('btn-refresh');
       var msgList = document.getElementById('msg-list');
       var dbError = document.getElementById('db-error');
+      var gatewayPrompt = document.getElementById('gateway-prompt');
+      var btnGateway = document.getElementById('btn-gateway');
+      var gatewayReply = document.getElementById('gateway-reply');
+      var gatewayMeta = document.getElementById('gateway-meta');
+      var gatewayError = document.getElementById('gateway-error');
 
       function showJson(el, obj) {
         el.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
@@ -455,15 +501,22 @@
         });
       }
 
-      function setDemoEnabled(on, tableName) {
+      function setDemoEnabled(on, tableName, aiModel) {
         btnHealth.disabled = !on;
         msgInput.disabled = !on;
         btnPost.disabled = !on;
         btnRefresh.disabled = !on;
+        gatewayPrompt.disabled = !on;
+        btnGateway.disabled = !on;
         if (on && tableName) {
           document.getElementById('db-hint').innerHTML =
             'Table <code style="font-size:0.85em;color:var(--green)">' + tableName + '</code> — ' +
             '<code style="font-size:0.85em;color:var(--green)">GET/POST /api/database/records/' + tableName + '</code>.';
+        }
+        if (aiModel) {
+          document.getElementById('gateway-hint').innerHTML =
+            'Model Gateway — <code style="font-size:0.85em;color:var(--green)">POST …/api/ai/chat/completion</code> · model ' +
+            '<code style="font-size:0.85em;color:var(--green)">' + aiModel + '</code> (override with <code style="font-size:0.85em">INSFORGE_AI_MODEL</code>).';
         }
       }
 
@@ -487,7 +540,7 @@
               ' · backend <strong class="status-ok">' + (cfg.baseHost || 'InsForge') + '</strong> · table ' +
               '<strong>' + (cfg.table || '') + '</strong>';
             configSetup.hidden = true;
-            setDemoEnabled(true, cfg.table);
+            setDemoEnabled(true, cfg.table, cfg.aiModel);
             loadMessages();
           } else {
             configStatus.innerHTML =
@@ -499,10 +552,10 @@
               '<p><code>INSFORGE_BASE_URL=https://your-app.insforge.app</code></p>' +
               '<p><code>INSFORGE_ANON_KEY=your_anon_or_jwt_key</code></p>' +
               '<p style="margin-top:10px">Optional: <code>INSFORGE_DEMO_TABLE=playground_demo_messages</code> · ' +
-              '<code>INSFORGE_PROJECT_ID=…</code> (defaults to this playground project)</p>' +
+              '<code>INSFORGE_PROJECT_ID=…</code> · <code>INSFORGE_AI_MODEL=openai/gpt-4o-mini</code></p>' +
               '<p style="margin-top:10px">In the InsForge console, create a table with at least a text column named ' +
               '<code>message</code>. Grant your anon role SELECT/INSERT as needed.</p>';
-            setDemoEnabled(false);
+            setDemoEnabled(false, null, cfg.aiModel);
           }
         })
         .catch(function () {
@@ -586,6 +639,54 @@
           })
           .finally(function () {
             btnPost.disabled = false;
+          });
+      });
+
+      btnGateway.addEventListener('click', function () {
+        var prompt = (gatewayPrompt.value || '').trim();
+        if (!prompt) return;
+        gatewayError.hidden = true;
+        gatewayError.textContent = '';
+        gatewayMeta.hidden = true;
+        gatewayMeta.textContent = '';
+        btnGateway.disabled = true;
+        gatewayReply.textContent = '…';
+        gatewayReply.classList.remove('empty');
+        fetch('/insforge-api/chat-completion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt }),
+        })
+          .then(function (r) {
+            return r.text().then(function (t) {
+              return { ok: r.ok, j: parseResponse(r, t) };
+            });
+          })
+          .then(function (x) {
+            if (x.ok && x.j && x.j.text != null) {
+              gatewayReply.textContent = String(x.j.text);
+              gatewayReply.classList.remove('empty');
+              var meta = x.j.metadata;
+              if (meta && (meta.model || (meta.usage && meta.usage.totalTokens != null))) {
+                var bits = [];
+                if (meta.model) bits.push('model: ' + meta.model);
+                if (meta.usage && meta.usage.totalTokens != null) bits.push('tokens: ' + meta.usage.totalTokens);
+                gatewayMeta.textContent = bits.join(' · ');
+                gatewayMeta.hidden = false;
+              }
+            } else {
+              gatewayReply.textContent = 'Response will appear here.';
+              gatewayReply.classList.add('empty');
+              showJson(gatewayError, x.j);
+            }
+          })
+          .catch(function (e) {
+            gatewayReply.classList.add('empty');
+            gatewayReply.textContent = 'Response will appear here.';
+            showJson(gatewayError, { error: String(e) });
+          })
+          .finally(function () {
+            btnGateway.disabled = false;
           });
       });
 
