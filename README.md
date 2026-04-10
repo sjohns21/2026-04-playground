@@ -8,6 +8,7 @@ A collection of small web apps and tools.
 |---|---|
 | `/` | Index |
 | `/resume` | Resume |
+| `/graph` | Trust Graph Explorer |
 | `/fullstack` | Full Stack Demo |
 | `/chat` | Chat |
 | `/flower-id` | Flower ID |
@@ -19,6 +20,9 @@ A collection of small web apps and tools.
 
 ### Resume
 Steve Johnson's resume — career timeline, trajectory chart, and tech stack.
+
+### Trust Graph Explorer
+Interactive D3 force-directed graph for exploring social trust networks. Add people, draw connections with weighted trust levels (0–100%), and watch trust scores propagate through the graph using a max-product Dijkstra algorithm — direct connections carry full weight, transitive trust decays per hop. Color-coded by trust level; sidebar shows computed score, hop count, and path from you.
 
 ### Full Stack Demo
 Interactive demo of full-stack product capabilities: kanban sprint board, user management CRUD, live AI chat assistant, animated metrics dashboard, and stack architecture diagram.
