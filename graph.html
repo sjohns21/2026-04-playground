@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Trust Graph Explorer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308;
+      --border: rgba(200,150,255,0.18);
+      --purple: #c77dff;
+      --cyan: #90e0ef;
+      --green: #80ffb4;
+      --pink: #ff6b9d;
+      --gold: #ffd060;
+      --text: #ddd0ff;
+      --muted: rgba(200,180,255,0.45);
+    }
+    body {
+      height: 100vh;
+      background: #030308;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 260px;
+      min-width: 260px;
+      height: 100vh;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 22px 16px;
+      gap: 20px;
+      overflow-y: auto;
+      background: rgba(7,7,20,0.9);
+    }
+    .brand { display: flex; flex-direction: column; gap: 3px; }
+    .brand-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--purple);
+    }
+    .brand-title {
+      font-size: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+    }
+    .divider { height: 1px; background: var(--border); flex-shrink: 0; }
+    .section { display: flex; flex-direction: column; gap: 8px; }
+    .section-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    input[type="text"] {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 11px;
+      color: var(--text);
+      font-size: 0.82rem;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input[type="text"]:focus { border-color: rgba(199,125,255,0.5); }
+    input[type="text"]::placeholder { color: rgba(200,180,255,0.25); }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--purple);
+      cursor: pointer;
+    }
+    .btn {
+      background: rgba(199,125,255,0.1);
+      border: 1px solid rgba(199,125,255,0.28);
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: var(--purple);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      letter-spacing: 0.04em;
+      font-family: inherit;
+      text-align: center;
+    }
+    .btn:hover { background: rgba(199,125,255,0.18); border-color: rgba(199,125,255,0.5); }
+    .btn.danger { color: var(--pink); background: rgba(255,107,157,0.08); border-color: rgba(255,107,157,0.28); }
+    .btn.danger:hover { background: rgba(255,107,157,0.18); }
+    .btn.sm { padding: 5px 10px; font-size: 0.7rem; }
+
+    /* node info panel */
+    #node-panel { display: none; }
+    .node-name {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff;
+    }
+    .trust-big {
+      font-size: 1.6rem;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .trust-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .trust-caption {
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.74rem;
+      color: var(--muted);
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .meta-row span:last-child { color: var(--text); }
+    .hint {
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    #edge-editor { display: none; flex-direction: column; gap: 8px; }
+    .edge-trust-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.74rem;
+    }
+    #edge-trust-val { font-variant-numeric: tabular-nums; color: var(--text); }
+
+    /* legend */
+    .legend { display: flex; flex-direction: column; gap: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.68rem; color: var(--muted); }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Canvas ── */
+    #canvas-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(ellipse at 55% 45%, rgba(199,125,255,0.04) 0%, transparent 65%);
+    }
+    svg { width: 100%; height: 100%; }
+
+    .back-link {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+      z-index: 10;
+    }
+    .back-link:hover { color: var(--text); }
+
+    #status-bar {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(7,7,20,0.85);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 18px;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* D3 graph styles */
+    .link { stroke-linecap: round; }
+    .edge-label {
+      font-size: 9px;
+      fill: rgba(200,180,255,0.5);
+      pointer-events: none;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      user-select: none;
+    }
+    .node-circle { transition: filter 0.2s; }
+    .node-text {
+      pointer-events: none;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="brand">
+    <span class="brand-label">Demo · Graph</span>
+    <span class="brand-title">Trust Explorer</span>
+  </div>
+
+  <div class="section" id="add-section">
+    <div class="section-label">Add Person</div>
+    <input type="text" id="name-input" placeholder="Name…" maxlength="18" autocomplete="off" />
+    <button class="btn" id="add-btn">Add to Graph</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- empty state -->
+  <div id="empty-panel" class="section">
+    <div class="hint">
+      Click a node to inspect it.<br>
+      Select a node, then click another to connect them.<br>
+      Drag nodes to rearrange.
+    </div>
+  </div>
+
+  <!-- selected node panel -->
+  <div id="node-panel" class="section">
+    <div class="node-name" id="node-name-el"></div>
+
+    <div id="trust-display-wrap">
+      <div class="trust-row">
+        <span class="trust-caption">Trust from you</span>
+        <span class="trust-big" id="trust-big-el">—</span>
+      </div>
+    </div>
+
+    <div id="node-meta-el"></div>
+
+    <div class="divider"></div>
+
+    <div class="section-label">Connection</div>
+    <div id="connect-hint" class="hint">Click another node to set a trust connection.</div>
+
+    <div id="edge-editor">
+      <div class="edge-trust-row">
+        <span style="color:var(--muted)">Trust level</span>
+        <span id="edge-trust-val">0.70</span>
+      </div>
+      <input type="range" id="edge-trust-slider" min="1" max="100" value="70" />
+      <div style="display:flex;gap:6px;">
+        <button class="btn" id="save-edge-btn" style="flex:1">Save</button>
+        <button class="btn danger sm" id="remove-edge-btn" style="display:none">Remove</button>
+      </div>
+    </div>
+
+    <button class="btn danger" id="remove-node-btn" style="margin-top:4px">Remove Person</button>
+  </div>
+
+  <div style="flex:1"></div>
+
+  <div class="section">
+    <div class="section-label">Legend</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#80ffb4"></div>High trust ≥ 70%</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ffd060"></div>Medium 40–70%</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff6b9d"></div>Low trust &lt; 40%</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(200,180,255,0.25);border:1px solid rgba(200,180,255,0.3)"></div>Unreachable</div>
+    </div>
+  </div>
+</div>
+
+<div id="canvas-area">
+  <a class="back-link" href="/">← back</a>
+  <svg id="graph"></svg>
+  <div id="status-bar">Scroll to zoom · Drag to pan · Click to select</div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let nodes = [];
+let links = [];       // {source, target, trust}  (source/target become objects after sim)
+let selectedId = null;
+let pendingSrc = null;
+let pendingTgt = null;
+let uid = 0;
+function nid() { return 'n' + (uid++); }
+
+// ── Seed graph ────────────────────────────────────────────────────────────
+(function seedGraph() {
+  const you   = { id: 'you',   name: 'You'   };
+  const alice = { id: nid(),   name: 'Alice' };
+  const bob   = { id: nid(),   name: 'Bob'   };
+  const carol = { id: nid(),   name: 'Carol' };
+  const dave  = { id: nid(),   name: 'Dave'  };
+  const eve   = { id: nid(),   name: 'Eve'   };
+  const frank = { id: nid(),   name: 'Frank' };
+
+  nodes = [you, alice, bob, carol, dave, eve, frank];
+  links = [
+    { source: 'you',    target: alice.id, trust: 0.90 },
+    { source: 'you',    target: bob.id,   trust: 0.70 },
+    { source: alice.id, target: carol.id, trust: 0.85 },
+    { source: alice.id, target: dave.id,  trust: 0.60 },
+    { source: bob.id,   target: eve.id,   trust: 0.80 },
+    { source: bob.id,   target: dave.id,  trust: 0.50 },
+    { source: carol.id, target: frank.id, trust: 0.90 },
+  ];
+})();
+
+// ── Trust propagation ─────────────────────────────────────────────────────
+// Direct connections: trust = edge weight (no decay)
+// Indirect: trust = product of edges × 0.85 per extra hop
+const HOP_DECAY = 0.85;
+
+function sid(l) { return typeof l.source === 'object' ? l.source.id : l.source; }
+function tid(l) { return typeof l.target === 'object' ? l.target.id : l.target; }
+
+function computeTrust() {
+  const scores = { you: 1.0 };
+  const paths  = { you: ['you'] };
+
+  const adj = {};
+  nodes.forEach(n => (adj[n.id] = []));
+  links.forEach(l => {
+    const s = sid(l), t = tid(l);
+    adj[s].push({ nb: t, w: l.trust });
+    adj[t].push({ nb: s, w: l.trust });
+  });
+
+  // Max-product Dijkstra
+  const visited = new Set();
+  const pq = [{ id: 'you', trust: 1.0, path: ['you'] }];
+
+  while (pq.length) {
+    pq.sort((a, b) => b.trust - a.trust);
+    const { id, trust, path } = pq.shift();
+    if (visited.has(id)) continue;
+    visited.add(id);
+
+    for (const { nb, w } of (adj[id] || [])) {
+      const newTrust = id === 'you' ? w : trust * w * HOP_DECAY;
+      if (newTrust > (scores[nb] ?? 0)) {
+        scores[nb] = newTrust;
+        paths[nb] = [...path, nb];
+        pq.push({ id: nb, trust: newTrust, path: [...path, nb] });
+      }
+    }
+  }
+
+  return { scores, paths };
+}
+
+// ── Color helpers ─────────────────────────────────────────────────────────
+function trustColor(t) {
+  if (t == null) return 'rgba(200,180,255,0.28)';
+  if (t >= 0.7)  return '#80ffb4';
+  if (t >= 0.4)  return '#ffd060';
+  return '#ff6b9d';
+}
+
+function edgeColor(t) {
+  return d3.interpolateRgb('#ff6b9d', '#80ffb4')(t);
+}
+
+// ── D3 setup ──────────────────────────────────────────────────────────────
+const canvasEl = document.getElementById('canvas-area');
+const svgEl    = d3.select('#graph');
+let W = canvasEl.offsetWidth;
+let H = canvasEl.offsetHeight;
+
+// Defs
+const defs = svgEl.append('defs');
+
+function makeGlow(id, std) {
+  const f = defs.append('filter').attr('id', id);
+  f.append('feGaussianBlur').attr('stdDeviation', std).attr('result', 'blur');
+  const m = f.append('feMerge');
+  m.append('feMergeNode').attr('in', 'blur');
+  m.append('feMergeNode').attr('in', 'SourceGraphic');
+}
+makeGlow('glow',     3);
+makeGlow('glow-sel', 6);
+
+const root      = svgEl.append('g');
+const linkLayer = root.append('g');
+const nodeLayer = root.append('g');
+
+// Zoom
+const zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', e => root.attr('transform', e.transform));
+svgEl.call(zoom);
+
+// Simulation
+const sim = d3.forceSimulation()
+  .force('link',      d3.forceLink().id(d => d.id).distance(130).strength(0.7))
+  .force('charge',    d3.forceManyBody().strength(-450))
+  .force('center',    d3.forceCenter(W / 2, H / 2))
+  .force('collision', d3.forceCollide(52));
+
+// Tick
+sim.on('tick', () => {
+  linkLayer.selectAll('line.link')
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+
+  linkLayer.selectAll('text.edge-label')
+    .attr('x', d => (d.source.x + d.target.x) / 2)
+    .attr('y', d => (d.source.y + d.target.y) / 2 - 5);
+
+  nodeLayer.selectAll('g.node-g')
+    .attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// ── Render ────────────────────────────────────────────────────────────────
+function render() {
+  const { scores, paths } = computeTrust();
+
+  // ── Links ──────────────────────────────────────────────────────────────
+  const linkKey = l => [sid(l), tid(l)].sort().join('|');
+
+  // Lines
+  const linesSel = linkLayer.selectAll('line.link').data(links, linkKey);
+  linesSel.enter().append('line').attr('class', 'link')
+    .merge(linesSel)
+    .attr('stroke', l => edgeColor(l.trust))
+    .attr('stroke-width', l => 1.5 + l.trust * 5)
+    .attr('stroke-opacity', l => {
+      const s = sid(l), t = tid(l);
+      const involved = selectedId && (s === selectedId || t === selectedId);
+      return involved ? 0.9 : 0.35;
+    });
+  linesSel.exit().remove();
+
+  // Edge labels
+  const labelsSel = linkLayer.selectAll('text.edge-label').data(links, linkKey);
+  labelsSel.enter().append('text').attr('class', 'edge-label').attr('text-anchor', 'middle')
+    .merge(labelsSel)
+    .text(l => (l.trust * 100).toFixed(0) + '%')
+    .attr('opacity', l => {
+      const s = sid(l), t = tid(l);
+      return (selectedId && (s === selectedId || t === selectedId)) ? 0.85 : 0.3;
+    });
+  labelsSel.exit().remove();
+
+  // ── Nodes ──────────────────────────────────────────────────────────────
+  const nodeSel = nodeLayer.selectAll('g.node-g').data(nodes, d => d.id);
+
+  const nodeEnter = nodeSel.enter().append('g').attr('class', 'node-g')
+    .style('cursor', 'pointer')
+    .call(d3.drag()
+      .on('start', (e, d) => { d._dragged = false; if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag',  (e, d) => { d._dragged = true; d.fx = e.x; d.fy = e.y; })
+      .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); if (d.id !== 'you') { d.fx = null; d.fy = null; } })
+    )
+    .on('pointerdown', (e, d) => { d._pd = [e.clientX, e.clientY]; })
+    .on('pointerup', (e, d) => {
+      if (!d._pd) return;
+      const [x0, y0] = d._pd; d._pd = null;
+      if (d._dragged) return;
+      if (Math.abs(e.clientX - x0) < 8 && Math.abs(e.clientY - y0) < 8) {
+        e.stopPropagation();
+        onNodeClick(e, d);
+      }
+    });
+
+  // Background circle (glow carrier)
+  nodeEnter.append('circle').attr('class', 'node-bg')
+    .attr('fill', 'rgba(5,5,18,0.95)');
+
+  // Ring
+  nodeEnter.append('circle').attr('class', 'node-ring').attr('fill', 'none').attr('stroke-width', 2);
+
+  // Name
+  nodeEnter.append('text').attr('class', 'node-text node-name-text')
+    .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle');
+
+  // Score
+  nodeEnter.append('text').attr('class', 'node-text node-score-text')
+    .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle');
+
+  // Merge + update
+  const nodeAll = nodeEnter.merge(nodeSel);
+  const isYou = d => d.id === 'you';
+  const r = d => isYou(d) ? 36 : 27;
+
+  nodeAll.select('.node-bg').attr('r', r);
+
+  nodeAll.select('.node-ring')
+    .attr('r', r)
+    .attr('stroke', d => isYou(d) ? '#c77dff' : trustColor(scores[d.id]))
+    .attr('stroke-opacity', d => d.id === selectedId ? 1 : 0.75)
+    .attr('filter', d => d.id === selectedId ? 'url(#glow-sel)' : 'url(#glow)');
+
+  nodeAll.select('.node-name-text')
+    .text(d => d.name)
+    .attr('font-size', d => isYou(d) ? '13px' : '11px')
+    .attr('font-weight', '500')
+    .attr('fill', d => d.id === selectedId ? '#fff' : 'var(--text)')
+    .attr('dy', d => isYou(d) ? '-7px' : '-5px');
+
+  nodeAll.select('.node-score-text')
+    .text(d => {
+      if (isYou(d)) return 'you';
+      const t = scores[d.id];
+      return t != null ? (t * 100).toFixed(0) + '%' : '?';
+    })
+    .attr('font-size', '9px')
+    .attr('font-weight', '300')
+    .attr('fill', d => isYou(d) ? 'var(--muted)' : trustColor(scores[d.id]))
+    .attr('dy', d => isYou(d) ? '9px' : '7px');
+
+  nodeSel.exit().remove();
+
+  // ── Simulation ─────────────────────────────────────────────────────────
+  sim.nodes(nodes);
+  sim.force('link').links(links);
+  sim.alpha(0.3).restart();
+
+  // ── Sidebar ────────────────────────────────────────────────────────────
+  updateSidebar(scores, paths);
+}
+
+// ── Sidebar update ────────────────────────────────────────────────────────
+function nodeById(id) { return nodes.find(n => n.id === id); }
+
+function getEdge(a, b) {
+  return links.find(l => {
+    const s = sid(l), t = tid(l);
+    return (s === a && t === b) || (s === b && t === a);
+  });
+}
+
+function updateSidebar(scores, paths) {
+  const emptyEl     = document.getElementById('empty-panel');
+  const panelEl     = document.getElementById('node-panel');
+  const nameEl      = document.getElementById('node-name-el');
+  const trustWrap   = document.getElementById('trust-display-wrap');
+  const trustBig    = document.getElementById('trust-big-el');
+  const metaEl      = document.getElementById('node-meta-el');
+  const hintEl      = document.getElementById('connect-hint');
+  const editorEl    = document.getElementById('edge-editor');
+  const saveBtn     = document.getElementById('save-edge-btn');
+  const removeEdge  = document.getElementById('remove-edge-btn');
+  const removeNode  = document.getElementById('remove-node-btn');
+  const slider      = document.getElementById('edge-trust-slider');
+
+  if (!selectedId) {
+    emptyEl.style.display = '';
+    panelEl.style.display = 'none';
+    return;
+  }
+
+  const node = nodeById(selectedId);
+  if (!node) return;
+
+  emptyEl.style.display = 'none';
+  panelEl.style.display = '';
+  nameEl.textContent = node.name;
+
+  const isYou = selectedId === 'you';
+
+  // Trust score
+  trustWrap.style.display = isYou ? 'none' : '';
+  if (!isYou) {
+    const t = scores[selectedId];
+    trustBig.textContent = t != null ? (t * 100).toFixed(0) + '%' : '?';
+    trustBig.style.color = trustColor(t);
+  }
+
+  // Meta
+  const connCount = links.filter(l => sid(l) === selectedId || tid(l) === selectedId).length;
+  const hops = paths[selectedId] ? paths[selectedId].length - 1 : null;
+  const pathNames = paths[selectedId]
+    ? paths[selectedId].map(id => nodeById(id)?.name ?? id).join(' → ')
+    : null;
+
+  metaEl.innerHTML = `
+    <div class="meta-row"><span>Connections</span><span>${connCount}</span></div>
+    ${!isYou && hops != null ? `<div class="meta-row"><span>Hops from you</span><span>${hops}</span></div>` : ''}
+    ${!isYou && pathNames ? `<div class="meta-row"><span>Path</span><span style="font-size:0.68rem;text-align:right;max-width:130px;word-break:break-word">${pathNames}</span></div>` : ''}
+  `;
+
+  // Edge editor
+  if (pendingSrc && pendingTgt) {
+    hintEl.style.display = 'none';
+    editorEl.style.display = 'flex';
+
+    const existing = getEdge(pendingSrc, pendingTgt);
+    const srcName  = nodeById(pendingSrc)?.name ?? pendingSrc;
+    const tgtName  = nodeById(pendingTgt)?.name ?? pendingTgt;
+
+    if (existing) {
+      slider.value = Math.round(existing.trust * 100);
+      document.getElementById('edge-trust-val').textContent = existing.trust.toFixed(2);
+      saveBtn.textContent = `Update`;
+      removeEdge.style.display = '';
+    } else {
+      slider.value = 70;
+      document.getElementById('edge-trust-val').textContent = '0.70';
+      saveBtn.textContent = `Connect`;
+      removeEdge.style.display = 'none';
+    }
+    saveBtn.title = `${srcName} ↔ ${tgtName}`;
+  } else {
+    hintEl.style.display = '';
+    editorEl.style.display = 'none';
+  }
+
+  removeNode.style.display = isYou ? 'none' : '';
+}
+
+// ── Interactions ──────────────────────────────────────────────────────────
+function onNodeClick(event, d) {
+  if (selectedId && selectedId !== d.id) {
+    // Second click → set up edge between selectedId and d.id
+    pendingSrc = selectedId;
+    pendingTgt = d.id;
+  } else if (selectedId === d.id) {
+    selectedId = null;
+    pendingSrc = null;
+    pendingTgt = null;
+  } else {
+    selectedId = d.id;
+    pendingSrc = null;
+    pendingTgt = null;
+  }
+
+  render();
+}
+
+svgEl.on('pointerup.deselect', (e) => {
+  if (e.target.closest && e.target.closest('.node-g')) return;
+  selectedId = null;
+  pendingSrc  = null;
+  pendingTgt  = null;
+  render();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    selectedId = null;
+    pendingSrc  = null;
+    pendingTgt  = null;
+    render();
+  }
+});
+
+// ── Edge editor ───────────────────────────────────────────────────────────
+document.getElementById('edge-trust-slider').addEventListener('input', function() {
+  document.getElementById('edge-trust-val').textContent = (this.value / 100).toFixed(2);
+});
+
+document.getElementById('save-edge-btn').addEventListener('click', () => {
+  if (!pendingSrc || !pendingTgt) return;
+  const trust = document.getElementById('edge-trust-slider').value / 100;
+  const existing = getEdge(pendingSrc, pendingTgt);
+  if (existing) {
+    existing.trust = trust;
+  } else {
+    links.push({ source: pendingSrc, target: pendingTgt, trust });
+  }
+  pendingSrc = null;
+  pendingTgt = null;
+  render();
+});
+
+document.getElementById('remove-edge-btn').addEventListener('click', () => {
+  if (!pendingSrc || !pendingTgt) return;
+  const a = pendingSrc, b = pendingTgt;
+  links = links.filter(l => !((sid(l) === a && tid(l) === b) || (sid(l) === b && tid(l) === a)));
+  pendingSrc = null;
+  pendingTgt = null;
+  render();
+});
+
+// ── Add person ────────────────────────────────────────────────────────────
+function addPerson() {
+  const input = document.getElementById('name-input');
+  const name = input.value.trim();
+  if (!name) return;
+  nodes.push({ id: nid(), name });
+  input.value = '';
+  render();
+}
+
+document.getElementById('add-btn').addEventListener('click', addPerson);
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addPerson();
+});
+
+// ── Remove node ───────────────────────────────────────────────────────────
+document.getElementById('remove-node-btn').addEventListener('click', () => {
+  if (!selectedId || selectedId === 'you') return;
+  const id = selectedId;
+  nodes = nodes.filter(n => n.id !== id);
+  links = links.filter(l => sid(l) !== id && tid(l) !== id);
+  selectedId = null;
+  pendingSrc  = null;
+  pendingTgt  = null;
+  render();
+});
+
+// ── Resize ────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  W = canvasEl.offsetWidth;
+  H = canvasEl.offsetHeight;
+  sim.force('center', d3.forceCenter(W / 2, H / 2));
+  sim.alpha(0.1).restart();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+const youNode = nodes.find(n => n.id === 'you');
+youNode.fx = W / 2;
+youNode.fy = H / 2;
+
+render();
+</script>
+</body>
+</html>

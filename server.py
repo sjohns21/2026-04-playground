@@ -362,6 +362,11 @@ def llm_explainer():
     return send_from_directory(".", "llm-explainer.html")
 
 
+@app.route("/graph")
+def graph():
+    return send_from_directory(".", "graph.html")
+
+
 @app.route("/spots")
 def spots_page():
     return send_from_directory(".", "spots.html")
