@@ -447,7 +447,8 @@
           meta.className = 'meta';
           var parts = [];
           if (row.id != null) parts.push('id: ' + row.id);
-          if (row.createdAt != null) parts.push(String(row.createdAt));
+          if (row.created_at != null) parts.push(String(row.created_at));
+          else if (row.createdAt != null) parts.push(String(row.createdAt));
           meta.textContent = parts.join(' · ');
           if (meta.textContent) li.appendChild(meta);
           msgList.appendChild(li);

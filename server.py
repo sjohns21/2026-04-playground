@@ -277,7 +277,7 @@ def insforge_demo_records():
 
     if request.method == "GET":
         params = dict(request.args)
-        params.setdefault("order", "createdAt.desc")
+        params.setdefault("order", "created_at.desc")
         params.setdefault("limit", "50")
         try:
             r = requests.get(url, headers=headers, params=params, timeout=30)
