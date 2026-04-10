@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+from urllib.parse import urlparse
 import requests
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
@@ -9,6 +10,9 @@ from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# InsForge dashboard / CLI project for this playground (override with INSFORGE_PROJECT_ID in .env).
+INSFORGE_PLAYGROUND_PROJECT_ID = "e2944ada-92be-44d1-aa70-24dc9c9b2603"
 
 app = Flask(__name__, static_folder=".")
 CORS(app)
@@ -203,6 +207,107 @@ def fullstack():
 @app.route("/insforge")
 def insforge():
     return send_from_directory(".", "insforge.html")
+
+
+def _insforge_config():
+    base = (os.environ.get("INSFORGE_BASE_URL") or "").strip().rstrip("/")
+    key = (os.environ.get("INSFORGE_ANON_KEY") or os.environ.get("INSFORGE_API_KEY") or "").strip()
+    table = (os.environ.get("INSFORGE_DEMO_TABLE") or "playground_demo_messages").strip()
+    return base, key, table
+
+
+def _insforge_project_id():
+    return (os.environ.get("INSFORGE_PROJECT_ID") or INSFORGE_PLAYGROUND_PROJECT_ID).strip()
+
+
+def _insforge_base_host(base):
+    if not base:
+        return None
+    try:
+        u = urlparse(base)
+        return u.netloc or base
+    except Exception:
+        return base
+
+
+@app.route("/insforge-api/config", methods=["GET"])
+def insforge_api_config():
+    base, key, table = _insforge_config()
+    ready = bool(base and key)
+    project_id = _insforge_project_id()
+    out = {
+        "ready": ready,
+        "projectId": project_id,
+        "dashboardUrl": f"https://insforge.dev/dashboard/project/{project_id}",
+        "table": table if ready else None,
+        "baseHost": _insforge_base_host(base) if base else None,
+    }
+    if not ready:
+        out["setup"] = (
+            "Set INSFORGE_BASE_URL (e.g. https://your-app.insforge.app) and "
+            "INSFORGE_ANON_KEY (or INSFORGE_API_KEY) in your environment or .env file."
+        )
+    return jsonify(out)
+
+
+@app.route("/insforge-api/health", methods=["GET"])
+def insforge_api_health():
+    base, _, _ = _insforge_config()
+    if not base:
+        return jsonify({"ok": False, "error": "INSFORGE_BASE_URL not set", "configured": False}), 503
+    try:
+        r = requests.get(f"{base}/api/health", timeout=15)
+        try:
+            body = r.json() if r.text else {}
+        except Exception:
+            body = {"raw": r.text[:500] if r.text else ""}
+        return jsonify({"ok": r.ok, "statusCode": r.status_code, "body": body})
+    except requests.RequestException as e:
+        return jsonify({"ok": False, "error": str(e)}), 502
+
+
+@app.route("/insforge-api/demo-records", methods=["GET", "POST"])
+def insforge_demo_records():
+    base, key, table = _insforge_config()
+    if not base or not key:
+        return jsonify({"error": "InsForge not configured", "code": "NOT_CONFIGURED"}), 503
+
+    url = f"{base}/api/database/records/{table}"
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+
+    if request.method == "GET":
+        params = dict(request.args)
+        params.setdefault("order", "createdAt.desc")
+        params.setdefault("limit", "50")
+        try:
+            r = requests.get(url, headers=headers, params=params, timeout=30)
+        except requests.RequestException as e:
+            return jsonify({"error": str(e)}), 502
+        resp = Response(r.content, status=r.status_code)
+        ct = r.headers.get("Content-Type", "application/json")
+        if ct:
+            resp.headers["Content-Type"] = ct
+        if "X-Total-Count" in r.headers:
+            resp.headers["X-Total-Count"] = r.headers["X-Total-Count"]
+        return resp
+
+    data = request.get_json(silent=True) or {}
+    msg = (data.get("message") or "").strip()
+    if not msg:
+        return jsonify({"error": "message is required"}), 400
+    if len(msg) > 2000:
+        return jsonify({"error": "message too long (max 2000 characters)"}), 400
+
+    headers["Prefer"] = "return=representation"
+    try:
+        r = requests.post(url, headers=headers, json=[{"message": msg}], timeout=30)
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 502
+    out = Response(r.content, status=r.status_code)
+    ct = r.headers.get("Content-Type", "application/json")
+    if ct:
+        out.headers["Content-Type"] = ct
+    return out
 
 
 @app.route("/llm-explainer")

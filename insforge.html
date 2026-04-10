@@ -11,6 +11,7 @@
       --cyan: #90e0ef;
       --green: #80ffb4;
       --amber: #f5a623;
+      --danger: #ff7b9c;
       --text: #ddd0ff;
       --muted: rgba(200, 180, 255, 0.45);
       --border: rgba(200, 150, 255, 0.18);
@@ -51,7 +52,7 @@
       text-transform: uppercase;
       color: var(--amber);
     }
-    .wrap { max-width: 820px; margin: 0 auto; padding: 48px 24px 72px; }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 40px 24px 72px; }
     .eyebrow {
       font-size: 0.62rem;
       letter-spacing: 0.28em;
@@ -64,41 +65,48 @@
       font-weight: 300;
       letter-spacing: 0.06em;
       line-height: 1.15;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       background: linear-gradient(105deg, var(--amber), var(--cyan), var(--purple));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
     .lead {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--muted);
-      line-height: 1.75;
-      max-width: 560px;
+      line-height: 1.7;
+      max-width: 580px;
       margin-bottom: 28px;
     }
     .lead a { color: var(--cyan); text-decoration: none; border-bottom: 1px solid rgba(144, 224, 239, 0.35); }
     .lead a:hover { color: var(--purple); border-color: rgba(199, 125, 255, 0.5); }
+    .cli-caption {
+      font-size: 0.62rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
     .cli {
       background: rgba(0, 0, 0, 0.35);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 16px 18px;
-      margin-bottom: 36px;
+      padding: 14px 16px;
+      margin-bottom: 28px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       justify-content: space-between;
     }
     .cli code {
       font-family: ui-monospace, 'Cascadia Code', monospace;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       color: var(--green);
       word-break: break-all;
     }
     .btn-copy {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       padding: 8px 14px;
@@ -117,7 +125,7 @@
       letter-spacing: 0.26em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 18px;
+      margin: 28px 0 14px;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -128,42 +136,168 @@
       height: 1px;
       background: var(--border);
     }
-    .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 14px;
-      margin-bottom: 40px;
-    }
-    .feat {
+    .panel {
       background: rgba(255, 255, 255, 0.025);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 18px 18px 16px;
+      padding: 18px 20px 20px;
+      margin-bottom: 16px;
     }
-    .feat h3 {
-      font-size: 0.78rem;
+    .panel h2 {
+      font-size: 0.72rem;
       font-weight: 600;
-      letter-spacing: 0.04em;
-      margin-bottom: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       color: var(--text);
+      margin-bottom: 12px;
     }
-    .feat p {
-      font-size: 0.76rem;
+    .status-line {
+      font-size: 0.8rem;
       color: var(--muted);
       line-height: 1.55;
+      margin-bottom: 10px;
     }
+    .status-line strong { color: var(--text); font-weight: 500; }
+    .status-ok { color: var(--green); }
+    .status-bad { color: var(--danger); }
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    button.primary, button.ghost {
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    button.primary {
+      background: rgba(199, 125, 255, 0.15);
+      color: var(--cyan);
+      border-color: rgba(199, 125, 255, 0.35);
+    }
+    button.primary:hover:not(:disabled) {
+      background: rgba(199, 125, 255, 0.22);
+      color: var(--text);
+    }
+    button.ghost {
+      background: var(--surface);
+      color: var(--muted);
+    }
+    button.ghost:hover:not(:disabled) {
+      border-color: rgba(199, 125, 255, 0.4);
+      color: var(--text);
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    pre.raw {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    textarea.msg {
+      width: 100%;
+      min-height: 88px;
+      margin-top: 8px;
+      margin-bottom: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      resize: vertical;
+    }
+    textarea.msg:focus {
+      outline: none;
+      border-color: rgba(199, 125, 255, 0.45);
+    }
+    .list {
+      list-style: none;
+      margin-top: 14px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .list li {
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.2);
+      margin-bottom: 10px;
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+    .list .meta {
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .setup-box {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.65;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(245, 166, 35, 0.06);
+      border: 1px solid rgba(245, 166, 35, 0.25);
+      margin-top: 10px;
+    }
+    .setup-box code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.74rem;
+      color: var(--green);
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .feat {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .feat h3 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .feat p { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
     .links {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
+      margin-top: 20px;
     }
     .links a {
       display: inline-block;
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       text-decoration: none;
-      padding: 10px 16px;
+      padding: 9px 14px;
       border-radius: 12px;
       border: 1px solid var(--border);
       background: var(--surface);
@@ -176,11 +310,11 @@
       color: var(--purple);
     }
     .note {
-      margin-top: 32px;
-      font-size: 0.78rem;
+      margin-top: 28px;
+      font-size: 0.74rem;
       color: var(--muted);
       line-height: 1.6;
-      padding-top: 24px;
+      padding-top: 20px;
       border-top: 1px solid var(--border);
     }
   </style>
@@ -192,78 +326,268 @@
     <span class="nav-cur">InsForge</span>
   </nav>
   <main class="wrap">
-    <p class="eyebrow">Backend for agentic development</p>
+    <p class="eyebrow">Live backend demo</p>
     <h1>InsForge</h1>
     <p class="lead">
-      <a href="https://insforge.dev/" target="_blank" rel="noopener noreferrer">InsForge</a>
-      is a backend platform built so AI coding agents can ship full-stack apps: structured Postgres, storage,
-      auth (including OAuth), edge functions, realtime, AI hooks, and deployment—without endless dashboard setup.
-      YC-backed; pairs naturally with tools like Cursor.
+      This page talks to your real <a href="https://insforge.dev/" target="_blank" rel="noopener noreferrer">InsForge</a>
+      project through this playground server (credentials stay in <code style="font-size:0.85em">.env</code>, not in the browser).
+      Ping <code style="font-size:0.85em">/api/health</code>, then read and write rows via the database records API.
     </p>
+    <p class="cli-caption">InsForge CLI · link this folder to your project</p>
     <div class="cli">
-      <code id="cli-cmd">npx @insforge/cli create</code>
+      <code id="cli-cmd">npx @insforge/cli link --project-id e2944ada-92be-44d1-aa70-24dc9c9b2603</code>
       <button type="button" class="btn-copy" id="copy-cli" aria-label="Copy CLI command">Copy</button>
     </div>
-    <h2 class="section-title">What you get</h2>
-    <div class="features">
-      <div class="feat">
-        <h3>Postgres</h3>
-        <p>Structured, scalable database per project, ready from the start.</p>
-      </div>
-      <div class="feat">
-        <h3>Cloud storage</h3>
-        <p>Store and serve files—from images to anything your app needs.</p>
-      </div>
-      <div class="feat">
-        <h3>Authentication</h3>
-        <p>Sign up and login flows with OAuth support built in.</p>
-      </div>
-      <div class="feat">
-        <h3>Functions</h3>
-        <p>Deploy and run backend logic without managing servers.</p>
-      </div>
-      <div class="feat">
-        <h3>Realtime</h3>
-        <p>Keep clients in sync as data changes.</p>
-      </div>
-      <div class="feat">
-        <h3>AI integration</h3>
-        <p>Connect and configure models for your app.</p>
-      </div>
-      <div class="feat">
-        <h3>Deployment</h3>
-        <p>Ship your site from the same workflow.</p>
-      </div>
+
+    <div class="panel" id="panel-config">
+      <h2>Configuration</h2>
+      <p class="status-line" id="config-status">Loading…</p>
+      <div class="setup-box" id="config-setup" hidden></div>
     </div>
-    <h2 class="section-title">Links</h2>
+
+    <div class="panel" id="panel-health">
+      <h2>Health</h2>
+      <p class="status-line">Calls <code style="font-size:0.85em;color:var(--green)">GET …/api/health</code> on your InsForge base URL.</p>
+      <div class="row-actions">
+        <button type="button" class="primary" id="btn-health" disabled>Ping backend</button>
+      </div>
+      <pre class="raw" id="health-out" hidden></pre>
+    </div>
+
+    <div class="panel" id="panel-db">
+      <h2>Database guestbook</h2>
+      <p class="status-line" id="db-hint">
+        Uses <code style="font-size:0.85em;color:var(--green)">GET/POST /api/database/records/{table}</code>.
+        Create a table with a <strong>message</strong> text column (name override: <code style="font-size:0.85em">INSFORGE_DEMO_TABLE</code>).
+      </p>
+      <textarea class="msg" id="msg-input" placeholder="Write a short note…" maxlength="2000" disabled></textarea>
+      <div class="row-actions">
+        <button type="button" class="primary" id="btn-post" disabled>Post to InsForge</button>
+        <button type="button" class="ghost" id="btn-refresh" disabled>Refresh list</button>
+      </div>
+      <ul class="list" id="msg-list" aria-live="polite"></ul>
+      <pre class="raw" id="db-error" hidden></pre>
+    </div>
+
+    <h2 class="section-title">Platform</h2>
+    <div class="features">
+      <div class="feat"><h3>Postgres</h3><p>Tables exposed as REST with PostgREST-style filters.</p></div>
+      <div class="feat"><h3>Auth &amp; storage</h3><p>JWT auth, OAuth, and S3-style buckets.</p></div>
+      <div class="feat"><h3>Functions &amp; AI</h3><p>Edge functions and hosted model calls.</p></div>
+    </div>
     <div class="links">
       <a href="https://insforge.dev/" target="_blank" rel="noopener noreferrer">insforge.dev</a>
+      <a href="https://docs.insforge.dev/sdks/rest/database" target="_blank" rel="noopener noreferrer">Database API</a>
       <a href="https://docs.insforge.dev/" target="_blank" rel="noopener noreferrer">Documentation</a>
-      <a href="https://github.com/InsForge/InsForge" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <a href="https://discord.gg/DvBtaEc9Jz" target="_blank" rel="noopener noreferrer">Discord</a>
-      <a href="https://mcpmark.ai/leaderboard/mcp" target="_blank" rel="noopener noreferrer">MCPMark benchmark</a>
     </div>
     <p class="note">
-      This page is a local playground summary, not affiliated with InsForge. For pricing, limits, and the latest
-      product details, use the official site and docs above.
+      Unaffiliated demo page. Row Level Security and roles on your InsForge project must allow the anon key to
+      select and insert on the demo table, or requests will fail with 401/403.
     </p>
   </main>
   <script>
     (function () {
-      var btn = document.getElementById('copy-cli');
-      var cmd = document.getElementById('cli-cmd');
-      if (!btn || !cmd) return;
-      btn.addEventListener('click', function () {
-        var text = cmd.textContent || '';
-        navigator.clipboard.writeText(text).then(function () {
-          btn.textContent = 'Copied';
-          btn.classList.add('copied');
-          setTimeout(function () {
-            btn.textContent = 'Copy';
-            btn.classList.remove('copied');
-          }, 2000);
+      var copyBtn = document.getElementById('copy-cli');
+      var cliCmd = document.getElementById('cli-cmd');
+      if (copyBtn && cliCmd) {
+        copyBtn.addEventListener('click', function () {
+          var text = cliCmd.textContent || '';
+          navigator.clipboard.writeText(text).then(function () {
+            copyBtn.textContent = 'Copied';
+            copyBtn.classList.add('copied');
+            setTimeout(function () {
+              copyBtn.textContent = 'Copy';
+              copyBtn.classList.remove('copied');
+            }, 2000);
+          });
         });
+      }
+
+      var configStatus = document.getElementById('config-status');
+      var configSetup = document.getElementById('config-setup');
+      var btnHealth = document.getElementById('btn-health');
+      var healthOut = document.getElementById('health-out');
+      var msgInput = document.getElementById('msg-input');
+      var btnPost = document.getElementById('btn-post');
+      var btnRefresh = document.getElementById('btn-refresh');
+      var msgList = document.getElementById('msg-list');
+      var dbError = document.getElementById('db-error');
+
+      function showJson(el, obj) {
+        el.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+        el.hidden = false;
+      }
+
+      function parseResponse(r, text) {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          return { raw: text };
+        }
+      }
+
+      function clearError() {
+        dbError.hidden = true;
+        dbError.textContent = '';
+      }
+
+      function renderRows(rows) {
+        msgList.innerHTML = '';
+        if (!Array.isArray(rows) || rows.length === 0) {
+          var empty = document.createElement('li');
+          empty.textContent = 'No rows yet. Post a message or check your table name and RLS policies.';
+          msgList.appendChild(empty);
+          return;
+        }
+        rows.forEach(function (row) {
+          var li = document.createElement('li');
+          var text = row.message != null ? String(row.message) : JSON.stringify(row);
+          li.appendChild(document.createTextNode(text));
+          var meta = document.createElement('div');
+          meta.className = 'meta';
+          var parts = [];
+          if (row.id != null) parts.push('id: ' + row.id);
+          if (row.createdAt != null) parts.push(String(row.createdAt));
+          meta.textContent = parts.join(' · ');
+          if (meta.textContent) li.appendChild(meta);
+          msgList.appendChild(li);
+        });
+      }
+
+      function setDemoEnabled(on, tableName) {
+        btnHealth.disabled = !on;
+        msgInput.disabled = !on;
+        btnPost.disabled = !on;
+        btnRefresh.disabled = !on;
+        if (on && tableName) {
+          document.getElementById('db-hint').innerHTML =
+            'Table <code style="font-size:0.85em;color:var(--green)">' + tableName + '</code> — ' +
+            '<code style="font-size:0.85em;color:var(--green)">GET/POST /api/database/records/' + tableName + '</code>.';
+        }
+      }
+
+      function projectLine(cfg) {
+        var id = cfg.projectId || '';
+        var dash = cfg.dashboardUrl
+          ? ' · <a href="' + cfg.dashboardUrl + '" target="_blank" rel="noopener noreferrer" style="color:var(--cyan)">Open in dashboard</a>'
+          : '';
+        return 'Project <code style="font-size:0.85em;color:var(--green)">' + id + '</code>' + dash;
+      }
+
+      fetch('/insforge-api/config')
+        .then(function (r) { return r.json(); })
+        .then(function (cfg) {
+          if (cfg.projectId && cliCmd) {
+            cliCmd.textContent = 'npx @insforge/cli link --project-id ' + cfg.projectId;
+          }
+          if (cfg.ready) {
+            configStatus.innerHTML =
+              projectLine(cfg) +
+              ' · backend <strong class="status-ok">' + (cfg.baseHost || 'InsForge') + '</strong> · table ' +
+              '<strong>' + (cfg.table || '') + '</strong>';
+            configSetup.hidden = true;
+            setDemoEnabled(true, cfg.table);
+            loadMessages();
+          } else {
+            configStatus.innerHTML =
+              projectLine(cfg) + ' · <span class="status-bad">API keys not set on server</span>';
+            configSetup.hidden = false;
+            configSetup.innerHTML =
+              '<p style="margin-bottom:10px">' + (cfg.setup || 'Set environment variables on the server.') + '</p>' +
+              '<p style="margin-bottom:6px">Example <code>.env</code>:</p>' +
+              '<p><code>INSFORGE_BASE_URL=https://your-app.insforge.app</code></p>' +
+              '<p><code>INSFORGE_ANON_KEY=your_anon_or_jwt_key</code></p>' +
+              '<p style="margin-top:10px">Optional: <code>INSFORGE_DEMO_TABLE=playground_demo_messages</code> · ' +
+              '<code>INSFORGE_PROJECT_ID=…</code> (defaults to this playground project)</p>' +
+              '<p style="margin-top:10px">In the InsForge console, create a table with at least a text column named ' +
+              '<code>message</code>. Grant your anon role SELECT/INSERT as needed.</p>';
+            setDemoEnabled(false);
+          }
+        })
+        .catch(function () {
+          configStatus.innerHTML = '<span class="status-bad">Could not load config</span>';
+          setDemoEnabled(false);
+        });
+
+      btnHealth.addEventListener('click', function () {
+        healthOut.hidden = true;
+        btnHealth.disabled = true;
+        fetch('/insforge-api/health')
+          .then(function (r) {
+            return r.text().then(function (t) {
+              return { ok: r.ok, j: parseResponse(r, t) };
+            });
+          })
+          .then(function (x) {
+            showJson(healthOut, x.j);
+          })
+          .catch(function (e) {
+            showJson(healthOut, { error: String(e) });
+          })
+          .finally(function () {
+            btnHealth.disabled = false;
+          });
       });
+
+      function loadMessages() {
+        clearError();
+        btnRefresh.disabled = true;
+        fetch('/insforge-api/demo-records')
+          .then(function (r) {
+            return r.text().then(function (t) {
+              return { ok: r.ok, status: r.status, j: parseResponse(r, t) };
+            });
+          })
+          .then(function (x) {
+            if (x.ok && Array.isArray(x.j)) {
+              renderRows(x.j);
+            } else {
+              renderRows([]);
+              showJson(dbError, x.j);
+            }
+          })
+          .catch(function (e) {
+            renderRows([]);
+            showJson(dbError, { error: String(e) });
+          })
+          .finally(function () {
+            btnRefresh.disabled = false;
+          });
+      }
+
+      btnRefresh.addEventListener('click', loadMessages);
+
+      btnPost.addEventListener('click', function () {
+        var text = (msgInput.value || '').trim();
+        if (!text) return;
+        clearError();
+        btnPost.disabled = true;
+        fetch('/insforge-api/demo-records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        })
+          .then(function (r) {
+            return r.text().then(function (t) {
+              return { ok: r.ok, status: r.status, j: parseResponse(r, t) };
+            });
+          })
+          .then(function (x) {
+            if (x.ok) {
+              msgInput.value = '';
+              loadMessages();
+            } else {
+              showJson(dbError, x.j);
+            }
+          })
+          .catch(function (e) {
+            showJson(dbError, { error: String(e) });
+          })
+          .finally(function () {
+            btnPost.disabled = false;
+          });
+      });
+
     })();
   </script>
 </body>
