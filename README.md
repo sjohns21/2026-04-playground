@@ -19,6 +19,7 @@ A collection of small web apps and tools.
 | `/auth` | Auth Explorer |
 | `/local-inference` | Local Inference |
 | `/langgraph-demo` | LangGraph Demo |
+| `/cavalla-rtc` | Cavalla RTC |
 
 ### Resume
 Steve Johnson's resume — career timeline, trajectory chart, and tech stack.
@@ -55,6 +56,9 @@ Chat with Llama 3.2 running locally via Ollama — no cloud, no API key. Support
 
 ### LangGraph Demo
 A ReAct agent built with LangGraph and Claude. The agent decides when to call tools (calculator, word counter, current time), and each step of the graph traversal is streamed and visualized live — AGENT and TOOLS nodes light up as the agent reasons and acts.
+
+### Cavalla RTC
+An empty placeholder page exposed at `/cavalla-rtc`.
 
 ## Setup
 

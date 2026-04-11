@@ -229,6 +229,12 @@ def fullstack():
     return send_from_directory(".", "fullstack.html")
 
 
+@app.route("/cavalla-rtc")
+@app.route("/cavalla-rtc.html")
+def cavalla_rtc():
+    return send_from_directory(".", "cavalla-rtc.html")
+
+
 @app.route("/insforge")
 def insforge():
     return send_from_directory(".", "insforge.html")
