@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Gigi Graph + Data Lab</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-1: #08151a;
+      --bg-2: #111f23;
+      --surface: rgba(255, 255, 255, 0.06);
+      --surface-2: rgba(255, 255, 255, 0.03);
+      --line: rgba(145, 233, 223, 0.22);
+      --line-strong: rgba(145, 233, 223, 0.52);
+      --text: #e9f7f4;
+      --muted: rgba(219, 243, 239, 0.72);
+      --teal: #91e9df;
+      --copper: #ffb77c;
+      --coral: #ff8f7e;
+      --ok: #9ff3bf;
+      --warn: #ffd36f;
+      --bad: #ff9f9f;
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Avenir Next", "Trebuchet MS", "Helvetica Neue", sans-serif;
+      background:
+        radial-gradient(circle at 10% 15%, rgba(145, 233, 223, 0.2), transparent 35%),
+        radial-gradient(circle at 88% 5%, rgba(255, 183, 124, 0.16), transparent 42%),
+        linear-gradient(150deg, var(--bg-1), var(--bg-2));
+      overflow-x: hidden;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 21, 26, 0.84);
+      backdrop-filter: blur(8px);
+    }
+
+    .nav a, .nav span {
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.64rem;
+      color: var(--muted);
+    }
+    .nav a:hover { color: var(--teal); }
+    .nav .current { color: var(--teal); }
+    .sep { color: rgba(233, 247, 244, 0.32); }
+
+    .wrap {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 34px 16px 70px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 24px;
+      background:
+        linear-gradient(120deg, rgba(145, 233, 223, 0.18), rgba(255, 183, 124, 0.11));
+      box-shadow: 0 18px 70px rgba(0, 0, 0, 0.24);
+      animation: rise 460ms ease;
+    }
+
+    .kicker {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 0.65rem;
+      color: rgba(233, 247, 244, 0.88);
+      margin-bottom: 11px;
+    }
+
+    h1 {
+      font-size: clamp(1.5rem, 4.7vw, 2.9rem);
+      letter-spacing: 0.04em;
+      line-height: 1.12;
+      max-width: 840px;
+      margin-bottom: 10px;
+    }
+
+    .lede {
+      color: var(--muted);
+      font-size: 0.92rem;
+      max-width: 900px;
+      line-height: 1.55;
+      margin-bottom: 14px;
+    }
+
+    .signals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .chip {
+      font-size: 0.62rem;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 999px;
+      padding: 6px 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .section {
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      background: var(--surface-2);
+      animation: rise 580ms ease;
+    }
+
+    .section h2 {
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.74rem;
+      color: var(--teal);
+      margin-bottom: 7px;
+    }
+
+    .section p {
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .control {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--surface);
+    }
+
+    .label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.63rem;
+      color: rgba(233, 247, 244, 0.77);
+    }
+
+    select, input[type="text"], input[type="range"], button {
+      width: 100%;
+    }
+
+    select, input[type="text"] {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: rgba(8, 21, 26, 0.8);
+      color: var(--text);
+      font-size: 0.84rem;
+    }
+
+    input[type="range"] {
+      accent-color: var(--teal);
+    }
+
+    button {
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: rgba(145, 233, 223, 0.16);
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.67rem;
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      background: rgba(145, 233, 223, 0.24);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px;
+      background: rgba(8, 21, 26, 0.6);
+    }
+
+    .panel-title {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.62rem;
+      color: rgba(233, 247, 244, 0.8);
+      margin-bottom: 8px;
+    }
+
+    .svg-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0a1a1f;
+      overflow: hidden;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .edge {
+      stroke: rgba(233, 247, 244, 0.24);
+      stroke-width: 1.3;
+    }
+    .edge.active {
+      stroke: rgba(145, 233, 223, 0.95);
+      stroke-width: 2.2;
+    }
+    .edge dim {
+      opacity: 0.3;
+    }
+
+    .node {
+      fill: rgba(233, 247, 244, 0.15);
+      stroke: rgba(233, 247, 244, 0.3);
+      stroke-width: 1;
+    }
+    .node.start {
+      fill: rgba(255, 183, 124, 0.92);
+      stroke: rgba(255, 183, 124, 1);
+    }
+    .node.active {
+      fill: rgba(145, 233, 223, 0.86);
+      stroke: rgba(145, 233, 223, 1);
+    }
+    .node-label {
+      fill: #e9f7f4;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-anchor: middle;
+      pointer-events: none;
+      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+    }
+
+    .candidate {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 7px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .candidate:last-child { margin-bottom: 0; }
+
+    .name {
+      font-size: 0.82rem;
+      color: #fff;
+      margin-bottom: 3px;
+    }
+
+    .meta {
+      font-size: 0.73rem;
+      color: var(--muted);
+    }
+
+    .score {
+      font-family: Menlo, monospace;
+      font-size: 0.8rem;
+      color: var(--teal);
+    }
+
+    .bar {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      overflow: hidden;
+      height: 18px;
+      margin-top: 6px;
+    }
+
+    .bar > div {
+      height: 100%;
+      background: linear-gradient(90deg, var(--copper), var(--teal));
+      transition: width 260ms ease;
+    }
+
+    .funnel {
+      display: grid;
+      gap: 8px;
+    }
+
+    .funnel-row {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .funnel-row strong {
+      color: #fff;
+      letter-spacing: 0.04em;
+      font-size: 0.79rem;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .metric .m-label {
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.58rem;
+      color: rgba(233, 247, 244, 0.62);
+      margin-bottom: 5px;
+    }
+    .metric .m-value {
+      font-family: Menlo, monospace;
+      font-size: 0.77rem;
+      color: #fff;
+    }
+
+    .log {
+      max-height: 170px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0a1a1f;
+      padding: 8px;
+      font-family: Menlo, monospace;
+      font-size: 0.7rem;
+      line-height: 1.5;
+      color: #d7f1ec;
+      white-space: pre-wrap;
+    }
+
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(233, 247, 244, 0.48);
+    }
+
+    @media (min-width: 860px) {
+      .controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .split { grid-template-columns: 1.2fr 1fr; }
+      .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/">Playground</a>
+    <span class="sep">|</span>
+    <a href="/gigi-cto">Gigi CTO Case</a>
+    <span class="sep">|</span>
+    <span class="current">Graph + Data Lab</span>
+  </nav>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="kicker">Interactive Learning Signal for Gigi</div>
+      <h1>Graph + Big Data Lab: Front-End Simulation of Trust Graph Retrieval, Ranking, and Double-Opt-In Intros</h1>
+      <p class="lede">
+        This page demonstrates core concepts relevant to Gigi's product: trust propagation on a relationship graph,
+        hybrid retrieval over unstructured profile text, and intro orchestration with strict consent rules.
+        Everything is front-end only so the logic is transparent and easy to discuss live with recruiters and technical interviewers.
+      </p>
+      <div class="signals">
+        <span class="chip">Graph Traversal</span>
+        <span class="chip">Feature Scoring</span>
+        <span class="chip">Agentic Workflow</span>
+        <span class="chip">Double-Opt-In Safety</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Demo 1 · Weighted Trust Graph Exploration</h2>
+      <p>
+        Select a source user, choose hop depth, and adjust the trust threshold. The visualization highlights reachable
+        nodes and candidate ranking scores based on trust-path strength plus goal fit.
+      </p>
+      <div class="controls">
+        <div class="control">
+          <div class="label"><span>Source User</span><span id="sourceName">Steve</span></div>
+          <select id="sourceSelect"></select>
+        </div>
+        <div class="control">
+          <div class="label"><span>Hop Depth</span><span id="hopValue">2</span></div>
+          <input type="range" id="hops" min="1" max="3" value="2" />
+        </div>
+        <div class="control">
+          <div class="label"><span>Min Edge Trust</span><span id="trustValue">0.45</span></div>
+          <input type="range" id="minTrust" min="0.2" max="0.8" step="0.05" value="0.45" />
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <div class="label"><span>Goal</span><span>Use Case</span></div>
+          <select id="goalSelect"></select>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <div class="panel-title">Network Reachability View</div>
+          <div class="svg-wrap">
+            <svg id="graphSvg" viewBox="0 0 740 380" aria-label="Trust Graph"></svg>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Top Reachable Candidates</div>
+          <div id="candidateList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Demo 2 · Hybrid Ranking over Structured + Unstructured Signals</h2>
+      <p>
+        Tune feature weights to simulate a lightweight ranking model. Profile text is treated as unstructured data and matched against
+        keyword intent. Reachability from Demo 1 acts as a hard graph filter.
+      </p>
+
+      <div class="controls">
+        <div class="control">
+          <div class="label"><span>Goal Keywords</span><span id="queryTokens">3 terms</span></div>
+          <input id="queryInput" type="text" value="agentic ai data infrastructure" />
+        </div>
+        <div class="control">
+          <div class="label"><span>Trust Weight</span><span id="wTrust">0.50</span></div>
+          <input id="trustWeight" type="range" min="0.1" max="0.8" step="0.05" value="0.5" />
+        </div>
+        <div class="control">
+          <div class="label"><span>Text Match Weight</span><span id="wText">0.30</span></div>
+          <input id="textWeight" type="range" min="0.1" max="0.8" step="0.05" value="0.3" />
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <div class="label"><span>Recency Weight</span><span id="wRecency">0.20</span></div>
+          <input id="recencyWeight" type="range" min="0.05" max="0.6" step="0.05" value="0.2" />
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Reranked Results</div>
+        <div id="rankedList"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Demo 3 · Double-Opt-In Intro Orchestration Simulator</h2>
+      <p>
+        Run synthetic intro requests to visualize funnel outcomes and latency. Acceptance rates respond to the currently top-ranked candidate,
+        demonstrating how graph quality and matching quality influence business outcomes.
+      </p>
+
+      <div class="controls">
+        <div class="control">
+          <div class="label"><span>Simulation Batch</span><span id="batchLabel">50 requests</span></div>
+          <input id="batchSize" type="range" min="10" max="200" step="10" value="50" />
+        </div>
+        <div class="control">
+          <div class="label"><span>Queue Pressure</span><span id="pressureLabel">0.20</span></div>
+          <input id="queuePressure" type="range" min="0" max="0.7" step="0.05" value="0.2" />
+        </div>
+        <div class="control">
+          <div class="label"><span>Execute</span><span>Orchestrator</span></div>
+          <button id="runSim">Run Intro Simulation</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <div class="panel-title">Outcome Funnel</div>
+          <div class="funnel" id="funnel"></div>
+          <div class="metrics">
+            <div class="metric">
+              <div class="m-label">Accepted Intro Rate</div>
+              <div class="m-value" id="acceptedRate">-</div>
+            </div>
+            <div class="metric">
+              <div class="m-label">P95 Total Latency</div>
+              <div class="m-value" id="p95Latency">-</div>
+            </div>
+            <div class="metric">
+              <div class="m-label">Top Candidate</div>
+              <div class="m-value" id="topCandidate">-</div>
+            </div>
+            <div class="metric">
+              <div class="m-label">Est. Intro Yield / 100</div>
+              <div class="m-value" id="yield100">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Recent Event Log</div>
+          <div class="log" id="eventLog"></div>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer">Built for a Founding CTO interview loop: product instincts + technical clarity + rapid learning signal</p>
+  </main>
+
+  <script>
+    const people = [
+      { id: "steve", name: "Steve", role: "Founder Engineer", city: "SF", freshness: 0.90, bio: "Founder shipping agentic AI products, data infrastructure, and marketplace workflows." },
+      { id: "clara", name: "Clara", role: "Founder CEO", city: "SF", freshness: 0.92, bio: "Operator building trusted graph products, GTM loops, and social-intro mechanics." },
+      { id: "jules", name: "Jules", role: "ML Infra", city: "SF", freshness: 0.81, bio: "Builds embeddings pipelines, vector search, and model serving for production AI teams." },
+      { id: "maya", name: "Maya", role: "Data Eng", city: "SF", freshness: 0.76, bio: "Streams event data, manages feature stores, and designs reliable ETL for graph analytics." },
+      { id: "noah", name: "Noah", role: "Product Eng", city: "NYC", freshness: 0.68, bio: "Owns growth surfaces, experiment loops, and recommendation UX with strong product instincts." },
+      { id: "anika", name: "Anika", role: "Staff Search", city: "SF", freshness: 0.83, bio: "Search ranking specialist with hybrid lexical and semantic retrieval systems background." },
+      { id: "omar", name: "Omar", role: "Trust & Safety", city: "SF", freshness: 0.71, bio: "Leads abuse prevention, consent workflows, policy engines, and identity risk controls." },
+      { id: "zoe", name: "Zoe", role: "Angel Connector", city: "SF", freshness: 0.62, bio: "Connects founders with senior operators and seed investors in enterprise AI." },
+      { id: "liam", name: "Liam", role: "Distributed Systems", city: "SF", freshness: 0.74, bio: "Scales graph services, caches, and high-throughput ingestion for social data workloads." }
+    ];
+
+    const edges = [
+      ["steve", "clara", 0.86], ["clara", "steve", 0.86],
+      ["steve", "jules", 0.69], ["jules", "steve", 0.61],
+      ["steve", "maya", 0.58], ["maya", "steve", 0.54],
+      ["clara", "anika", 0.77], ["anika", "clara", 0.7],
+      ["jules", "liam", 0.79], ["liam", "jules", 0.76],
+      ["maya", "liam", 0.63], ["liam", "maya", 0.64],
+      ["clara", "zoe", 0.66], ["zoe", "clara", 0.59],
+      ["anika", "omar", 0.71], ["omar", "anika", 0.67],
+      ["zoe", "noah", 0.47], ["noah", "zoe", 0.4],
+      ["noah", "omar", 0.55], ["omar", "noah", 0.53],
+      ["maya", "anika", 0.52], ["anika", "maya", 0.5]
+    ].map(([from, to, trust]) => ({ from, to, trust }));
+
+    const goals = [
+      { id: "founding-hire", label: "Find Founding AI Infra Engineer", tags: ["agentic", "infrastructure", "embeddings", "vector", "graph"] },
+      { id: "safety", label: "Find Trust & Safety Advisor", tags: ["trust", "safety", "policy", "consent", "risk"] },
+      { id: "gtm", label: "Find GTM Operator for Waitlist Activation", tags: ["growth", "marketplace", "gtm", "loops", "experiment"] }
+    ];
+
+    const positions = {
+      steve: [130, 190], clara: [250, 100], jules: [365, 92], maya: [425, 205],
+      noah: [565, 112], anika: [520, 275], omar: [650, 220], zoe: [345, 300], liam: [250, 280]
+    };
+
+    const sourceSelect = document.getElementById("sourceSelect");
+    const hopsInput = document.getElementById("hops");
+    const minTrustInput = document.getElementById("minTrust");
+    const goalSelect = document.getElementById("goalSelect");
+    const graphSvg = document.getElementById("graphSvg");
+    const candidateList = document.getElementById("candidateList");
+
+    const queryInput = document.getElementById("queryInput");
+    const trustWeightInput = document.getElementById("trustWeight");
+    const textWeightInput = document.getElementById("textWeight");
+    const recencyWeightInput = document.getElementById("recencyWeight");
+    const rankedList = document.getElementById("rankedList");
+
+    const batchSizeInput = document.getElementById("batchSize");
+    const queuePressureInput = document.getElementById("queuePressure");
+    const runSimBtn = document.getElementById("runSim");
+
+    let state = {
+      source: "steve",
+      hops: Number(hopsInput.value),
+      minTrust: Number(minTrustInput.value),
+      goal: goals[0].id,
+      graphScores: {},
+      ranked: []
+    };
+
+    function initControls() {
+      people.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = `${p.name} · ${p.role}`;
+        sourceSelect.appendChild(opt);
+      });
+      sourceSelect.value = state.source;
+
+      goals.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g.id;
+        opt.textContent = g.label;
+        goalSelect.appendChild(opt);
+      });
+      goalSelect.value = state.goal;
+    }
+
+    function computeGraphScores(source, hops, minTrust) {
+      let scores = { [source]: 1 };
+      for (let step = 0; step < hops; step += 1) {
+        const next = { ...scores };
+        for (const edge of edges) {
+          if (edge.trust < minTrust) continue;
+          const fromScore = scores[edge.from];
+          if (!fromScore) continue;
+          const candidate = fromScore * edge.trust;
+          if (!next[edge.to] || candidate > next[edge.to]) {
+            next[edge.to] = candidate;
+          }
+        }
+        scores = next;
+      }
+      delete scores[source];
+      return scores;
+    }
+
+    function scoreGoalFit(person, goal) {
+      const tags = goal.tags;
+      const text = `${person.role} ${person.bio}`.toLowerCase();
+      let hits = 0;
+      for (const t of tags) {
+        if (text.includes(t.toLowerCase())) hits += 1;
+      }
+      return Math.min(1, hits / tags.length);
+    }
+
+    function renderGraph(scores) {
+      let edgeMarkup = "";
+      for (const edge of edges) {
+        const [x1, y1] = positions[edge.from];
+        const [x2, y2] = positions[edge.to];
+        const active = edge.trust >= state.minTrust && (scores[edge.from] || edge.from === state.source) && scores[edge.to];
+        edgeMarkup += `<line class="edge ${active ? "active" : ""}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />`;
+      }
+
+      let nodeMarkup = "";
+      for (const person of people) {
+        const [x, y] = positions[person.id];
+        const cls = person.id === state.source ? "node start" : (scores[person.id] ? "node active" : "node");
+        nodeMarkup += `<circle class="${cls}" cx="${x}" cy="${y}" r="20"></circle>`;
+        nodeMarkup += `<text class="node-label" x="${x}" y="${y + 34}">${person.name}</text>`;
+      }
+
+      graphSvg.innerHTML = edgeMarkup + nodeMarkup;
+    }
+
+    function renderCandidates(scores) {
+      const goal = goals.find(g => g.id === state.goal);
+      const rows = people
+        .filter(p => p.id !== state.source && scores[p.id])
+        .map(p => {
+          const goalFit = scoreGoalFit(p, goal);
+          const finalScore = (scores[p.id] * 0.7) + (goalFit * 0.3);
+          return { person: p, finalScore, goalFit, graph: scores[p.id] };
+        })
+        .sort((a, b) => b.finalScore - a.finalScore)
+        .slice(0, 6);
+
+      candidateList.innerHTML = rows.length
+        ? rows.map(row => `
+          <article class="candidate">
+            <div>
+              <div class="name">${row.person.name} · ${row.person.role}</div>
+              <div class="meta">Graph: ${row.graph.toFixed(2)} | Goal fit: ${row.goalFit.toFixed(2)} | ${row.person.city}</div>
+            </div>
+            <div class="score">${row.finalScore.toFixed(3)}</div>
+          </article>
+        `).join("")
+        : `<div class="meta">No reachable candidates at this trust threshold. Lower min edge trust or increase hop depth.</div>`;
+    }
+
+    function tokenized(text) {
+      return (text || "")
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+        .filter(token => token.length > 2);
+    }
+
+    function computeHybridRanking() {
+      const tokens = tokenized(queryInput.value);
+      const wTrust = Number(trustWeightInput.value);
+      const wText = Number(textWeightInput.value);
+      const wRecency = Number(recencyWeightInput.value);
+      const sum = wTrust + wText + wRecency;
+      const tw = wTrust / sum;
+      const tx = wText / sum;
+      const rw = wRecency / sum;
+
+      const ranked = people
+        .filter(p => p.id !== state.source && state.graphScores[p.id])
+        .map(p => {
+          const corpus = tokenized(`${p.role} ${p.bio}`);
+          const unique = new Set(corpus);
+          let hits = 0;
+          for (const t of tokens) {
+            if (unique.has(t)) hits += 1;
+          }
+          const textScore = tokens.length ? hits / tokens.length : 0;
+          const trustScore = state.graphScores[p.id];
+          const recencyScore = p.freshness;
+          const score = (trustScore * tw) + (textScore * tx) + (recencyScore * rw);
+          return { p, score, trustScore, textScore, recencyScore };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      state.ranked = ranked;
+      document.getElementById("queryTokens").textContent = `${tokens.length || 0} terms`;
+      document.getElementById("wTrust").textContent = Number(trustWeightInput.value).toFixed(2);
+      document.getElementById("wText").textContent = Number(textWeightInput.value).toFixed(2);
+      document.getElementById("wRecency").textContent = Number(recencyWeightInput.value).toFixed(2);
+
+      rankedList.innerHTML = ranked.length ? ranked.slice(0, 6).map((r, i) => `
+        <article class="candidate">
+          <div>
+            <div class="name">#${i + 1} ${r.p.name} · ${r.p.role}</div>
+            <div class="meta">Trust ${r.trustScore.toFixed(2)} | Text ${r.textScore.toFixed(2)} | Recency ${r.recencyScore.toFixed(2)}</div>
+            <div class="bar"><div style="width:${Math.max(4, r.score * 100).toFixed(1)}%"></div></div>
+          </div>
+          <div class="score">${r.score.toFixed(3)}</div>
+        </article>
+      `).join("") : `<div class="meta">No ranked results yet. Adjust Demo 1 controls first.</div>`;
+    }
+
+    function percentile(values, p) {
+      if (!values.length) return 0;
+      const sorted = [...values].sort((a, b) => a - b);
+      const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+      return sorted[idx];
+    }
+
+    function runSimulation() {
+      const n = Number(batchSizeInput.value);
+      const pressure = Number(queuePressureInput.value);
+      const top = state.ranked[0];
+
+      const trustFactor = top ? top.trustScore : 0.45;
+      const fitFactor = top ? top.textScore : 0.35;
+      const recencyFactor = top ? top.recencyScore : 0.5;
+
+      const requesterOptIn = Math.min(0.95, 0.62 + trustFactor * 0.28);
+      const targetOptIn = Math.min(0.9, 0.45 + trustFactor * 0.25 + fitFactor * 0.18 + recencyFactor * 0.1);
+
+      let requesterDeclined = 0;
+      let targetDeclined = 0;
+      let accepted = 0;
+      const latencies = [];
+      const logs = [];
+
+      for (let i = 0; i < n; i += 1) {
+        const retrievalMs = 120 + Math.random() * 240 + (pressure * 240);
+        const planningMs = 40 + Math.random() * 60;
+        const requesterWaitMs = 500 + Math.random() * 3200 + (pressure * 900);
+        const targetWaitMs = 600 + Math.random() * 4200 + (pressure * 1100);
+
+        if (Math.random() > requesterOptIn) {
+          requesterDeclined += 1;
+          latencies.push(retrievalMs + planningMs + requesterWaitMs);
+          logs.push(`REQ-${i + 1}: requester declined after ${Math.round(retrievalMs + planningMs + requesterWaitMs)}ms`);
+          continue;
+        }
+        if (Math.random() > targetOptIn) {
+          targetDeclined += 1;
+          latencies.push(retrievalMs + planningMs + requesterWaitMs + targetWaitMs);
+          logs.push(`REQ-${i + 1}: target declined after ${Math.round(retrievalMs + planningMs + requesterWaitMs + targetWaitMs)}ms`);
+          continue;
+        }
+        accepted += 1;
+        latencies.push(retrievalMs + planningMs + requesterWaitMs + targetWaitMs);
+        logs.push(`REQ-${i + 1}: intro created in ${Math.round(retrievalMs + planningMs + requesterWaitMs + targetWaitMs)}ms`);
+      }
+
+      const started = n;
+      const acceptedRate = started ? accepted / started : 0;
+      const p95 = percentile(latencies, 95);
+      const estimatedYield100 = Math.round(acceptedRate * 100);
+
+      document.getElementById("acceptedRate").textContent = `${(acceptedRate * 100).toFixed(1)}%`;
+      document.getElementById("p95Latency").textContent = `${Math.round(p95)} ms`;
+      document.getElementById("topCandidate").textContent = top ? top.p.name : "None";
+      document.getElementById("yield100").textContent = `${estimatedYield100} intros`;
+      document.getElementById("eventLog").textContent = logs.slice(-12).join("\n");
+
+      const funnelData = [
+        { label: "Requests Started", value: started, color: "var(--teal)" },
+        { label: "Requester Opted In", value: started - requesterDeclined, color: "var(--warn)" },
+        { label: "Target Responded", value: accepted + targetDeclined, color: "var(--copper)" },
+        { label: "Introductions Sent", value: accepted, color: "var(--ok)" }
+      ];
+      const maxVal = Math.max(1, started);
+
+      document.getElementById("funnel").innerHTML = funnelData.map(row => `
+        <div class="funnel-row">
+          <strong>${row.label}: ${row.value}</strong>
+          <div class="bar"><div style="width:${(row.value / maxVal) * 100}%; background:${row.color};"></div></div>
+        </div>
+      `).join("");
+    }
+
+    function refreshCoreDemo() {
+      state.hops = Number(hopsInput.value);
+      state.minTrust = Number(minTrustInput.value);
+      state.source = sourceSelect.value;
+      state.goal = goalSelect.value;
+
+      document.getElementById("hopValue").textContent = String(state.hops);
+      document.getElementById("trustValue").textContent = state.minTrust.toFixed(2);
+      document.getElementById("sourceName").textContent = people.find(p => p.id === state.source).name;
+
+      const scores = computeGraphScores(state.source, state.hops, state.minTrust);
+      state.graphScores = scores;
+      renderGraph(scores);
+      renderCandidates(scores);
+      computeHybridRanking();
+    }
+
+    sourceSelect.addEventListener("input", refreshCoreDemo);
+    hopsInput.addEventListener("input", refreshCoreDemo);
+    minTrustInput.addEventListener("input", refreshCoreDemo);
+    goalSelect.addEventListener("input", refreshCoreDemo);
+
+    queryInput.addEventListener("input", computeHybridRanking);
+    trustWeightInput.addEventListener("input", computeHybridRanking);
+    textWeightInput.addEventListener("input", computeHybridRanking);
+    recencyWeightInput.addEventListener("input", computeHybridRanking);
+
+    batchSizeInput.addEventListener("input", () => {
+      document.getElementById("batchLabel").textContent = `${batchSizeInput.value} requests`;
+    });
+    queuePressureInput.addEventListener("input", () => {
+      document.getElementById("pressureLabel").textContent = Number(queuePressureInput.value).toFixed(2);
+    });
+    runSimBtn.addEventListener("click", runSimulation);
+
+    initControls();
+    refreshCoreDemo();
+    runSimulation();
+  </script>
+</body>
+</html>

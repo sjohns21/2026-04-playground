@@ -218,6 +218,12 @@ def gigi_cto():
     return send_from_directory(".", "gigi-cto.html")
 
 
+@app.route("/gigi-graph-lab")
+@app.route("/gigi-graph-lab.html")
+def gigi_graph_lab():
+    return send_from_directory(".", "gigi-graph-lab.html")
+
+
 @app.route("/fullstack")
 def fullstack():
     return send_from_directory(".", "fullstack.html")
