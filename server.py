@@ -212,6 +212,12 @@ def resume():
     return send_from_directory(".", "resume.html")
 
 
+@app.route("/gigi-cto")
+@app.route("/gigi-cto.html")
+def gigi_cto():
+    return send_from_directory(".", "gigi-cto.html")
+
+
 @app.route("/fullstack")
 def fullstack():
     return send_from_directory(".", "fullstack.html")
