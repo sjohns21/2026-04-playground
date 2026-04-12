@@ -569,9 +569,9 @@
     }
 
     function appendForkliftEvent(message) {
-      commandHistory.push(message);
+      commandHistory.unshift(message);
       if (commandHistory.length > 14) {
-        commandHistory.shift();
+        commandHistory.pop();
       }
       forkliftEvents.textContent = commandHistory.join('\n');
     }
