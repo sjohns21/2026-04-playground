@@ -94,6 +94,10 @@
       padding: 20px;
     }
 
+    .box[hidden] {
+      display: none !important;
+    }
+
     .box-label {
       position: absolute;
       top: 12px;
@@ -301,7 +305,7 @@
     <p id="room-meta" class="room-meta">room not connected</p>
   </div>
   <div class="lane">
-    <div class="box">
+    <div id="forklift-box" class="box" hidden>
       <div class="box-label">forklift</div>
       <div class="panel">
         <div class="video-stage multi-video-stage">
@@ -396,6 +400,7 @@
   <script>
     const MOCK_FORKLIFT_STREAMS = 6;
     const MOCK_FORKLIFT_STREAM_NAME_PREFIX = 'mock-forklift-stream-';
+    const forkliftBox = document.getElementById('forklift-box');
     const forkliftVideoSlots = [
       {
         video: document.getElementById('forklift-camera-1'),
@@ -637,6 +642,7 @@
         return;
       }
       mockForkliftCommandFeedActive = active;
+      forkliftBox.hidden = !active;
       if (active) {
         appendForkliftEvent(`${new Date().toLocaleTimeString()} | mock forklift command feed online`);
       } else {
