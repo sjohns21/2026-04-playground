@@ -280,6 +280,18 @@
             <video id="forklift-camera-3" class="camera-feed" autoplay playsinline></video>
             <div id="camera-status-3" class="camera-status">waiting for additional forklift video stream 3...</div>
           </div>
+          <div class="video-tile">
+            <video id="forklift-camera-4" class="camera-feed" autoplay playsinline></video>
+            <div id="camera-status-4" class="camera-status">waiting for additional forklift video stream 4...</div>
+          </div>
+          <div class="video-tile">
+            <video id="forklift-camera-5" class="camera-feed" autoplay playsinline></video>
+            <div id="camera-status-5" class="camera-status">waiting for additional forklift video stream 5...</div>
+          </div>
+          <div class="video-tile">
+            <video id="forklift-camera-6" class="camera-feed" autoplay playsinline></video>
+            <div id="camera-status-6" class="camera-status">waiting for additional forklift video stream 6...</div>
+          </div>
         </div>
         <div class="panel-footer">
           <p class="panel-title">Forklift Command Feed</p>
@@ -304,6 +316,18 @@
             <video id="operator-video-3" class="camera-feed" autoplay playsinline></video>
             <div id="operator-status-3" class="camera-status">waiting for forklift video stream 3...</div>
           </div>
+          <div class="video-tile">
+            <video id="operator-video-4" class="camera-feed" autoplay playsinline></video>
+            <div id="operator-status-4" class="camera-status">waiting for forklift video stream 4...</div>
+          </div>
+          <div class="video-tile">
+            <video id="operator-video-5" class="camera-feed" autoplay playsinline></video>
+            <div id="operator-status-5" class="camera-status">waiting for forklift video stream 5...</div>
+          </div>
+          <div class="video-tile">
+            <video id="operator-video-6" class="camera-feed" autoplay playsinline></video>
+            <div id="operator-status-6" class="camera-status">waiting for forklift video stream 6...</div>
+          </div>
         </div>
         <div class="panel-footer">
           <p class="panel-title">Operator Controller</p>
@@ -323,6 +347,7 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <script>
+    const MOCK_FORKLIFT_STREAMS = 6;
     const forkliftVideoSlots = [
       {
         video: document.getElementById('forklift-camera-1'),
@@ -335,6 +360,18 @@
       {
         video: document.getElementById('forklift-camera-3'),
         status: document.getElementById('camera-status-3'),
+      },
+      {
+        video: document.getElementById('forklift-camera-4'),
+        status: document.getElementById('camera-status-4'),
+      },
+      {
+        video: document.getElementById('forklift-camera-5'),
+        status: document.getElementById('camera-status-5'),
+      },
+      {
+        video: document.getElementById('forklift-camera-6'),
+        status: document.getElementById('camera-status-6'),
       },
     ];
     const operatorVideoSlots = [
@@ -349,6 +386,18 @@
       {
         video: document.getElementById('operator-video-3'),
         status: document.getElementById('operator-status-3'),
+      },
+      {
+        video: document.getElementById('operator-video-4'),
+        status: document.getElementById('operator-status-4'),
+      },
+      {
+        video: document.getElementById('operator-video-5'),
+        status: document.getElementById('operator-status-5'),
+      },
+      {
+        video: document.getElementById('operator-video-6'),
+        status: document.getElementById('operator-status-6'),
       },
     ];
     const forkliftEvents = document.getElementById('forklift-events');
@@ -536,16 +585,14 @@
         const sourceSettings = sourceTrack?.getSettings?.() || {};
         const sourceWidth = Number(sourceSettings.width) || sourceVideo.videoWidth || 1280;
         const sourceHeight = Number(sourceSettings.height) || sourceVideo.videoHeight || 720;
-        const segmentStarts = [
-          0,
-          Math.floor(sourceWidth / 3),
-          Math.floor((2 * sourceWidth) / 3),
-        ];
-        const segmentEnds = [
-          segmentStarts[1],
-          segmentStarts[2],
-          sourceWidth,
-        ];
+        const segmentStarts = Array.from({ length: MOCK_FORKLIFT_STREAMS }, (_, index) => (
+          Math.floor((sourceWidth * index) / MOCK_FORKLIFT_STREAMS)
+        ));
+        const segmentEnds = Array.from({ length: MOCK_FORKLIFT_STREAMS }, (_, index) => (
+          index + 1 < MOCK_FORKLIFT_STREAMS
+            ? segmentStarts[index + 1]
+            : sourceWidth
+        ));
 
         const segmentRenderers = segmentStarts.map((startX, index) => {
           const segmentWidth = Math.max(2, segmentEnds[index] - startX);
@@ -561,7 +608,7 @@
 
         const canvasStreams = segmentRenderers.map(({ canvas }) => canvas.captureStream(24));
         const splitTracks = canvasStreams.map((stream) => stream.getVideoTracks()[0]).filter(Boolean);
-        if (splitTracks.length !== 3) {
+        if (splitTracks.length !== MOCK_FORKLIFT_STREAMS) {
           throw new Error('unable to create split mock video tracks');
         }
 
@@ -578,7 +625,7 @@
         mockCanvasStreams = canvasStreams;
         mockVideoTracks = splitTracks;
 
-        forkliftVideoSlots.forEach((slot, index) => {
+        forkliftVideoSlots.slice(0, MOCK_FORKLIFT_STREAMS).forEach((slot, index) => {
           slot.video.srcObject = new MediaStream([splitTracks[index]]);
           slot.status.hidden = true;
         });
