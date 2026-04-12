@@ -27,16 +27,15 @@
 
     .box {
       flex: 1;
-      min-height: 240px;
+      min-height: 420px;
       border: 2px solid #222;
       background: #fff;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      text-transform: lowercase;
+      align-items: stretch;
+      justify-content: stretch;
       position: relative;
       overflow: hidden;
+      padding: 20px;
     }
 
     .box-label {
@@ -61,30 +60,109 @@
       background: #111;
     }
 
-    .camera-status {
-      padding: 24px;
-      text-align: center;
-      font-size: 18px;
-      line-height: 1.5;
-      text-transform: none;
-    }
-
-    .operator-box {
-      align-items: stretch;
-      justify-content: stretch;
-      padding: 20px;
-    }
-
-    .inner-box {
-      border: 2px solid #222;
+    .panel {
       width: 100%;
       height: 100%;
       display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .video-stage {
+      position: relative;
+      border: 2px solid #222;
+      background: #111;
+      min-height: 220px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .camera-status {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      text-transform: lowercase;
+      padding: 16px;
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.4;
+      text-transform: none;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+    }
+
+    .panel-footer {
+      border: 2px solid #222;
+      background: #f8f8f8;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .event-log {
+      margin: 0;
+      padding: 8px;
+      border: 1px solid #bbb;
       background: #fff;
+      font-size: 14px;
+      line-height: 1.4;
+      height: 90px;
+      overflow: auto;
+      font-family: "Courier New", monospace;
+    }
+
+    .controller-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(56px, 1fr));
+      gap: 8px;
+      max-width: 280px;
+    }
+
+    .controller-grid button {
+      border: 2px solid #222;
+      background: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 10px 8px;
+      cursor: pointer;
+    }
+
+    .controller-grid button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .controller-grid button.active {
+      background: #222;
+      color: #fff;
+    }
+
+    .empty-cell {
+      visibility: hidden;
+    }
+
+    .operator-command-status {
+      margin: 0;
+      font-size: 13px;
+      min-height: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .lane {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -93,14 +171,36 @@
   <div class="lane">
     <div class="box">
       <div class="box-label">forklift</div>
-      <video id="forklift-camera" class="camera-feed" autoplay muted playsinline></video>
-      <div id="camera-status" class="camera-status">requesting webcam access...</div>
+      <div class="panel">
+        <div class="video-stage">
+          <video id="forklift-camera" class="camera-feed" autoplay muted playsinline></video>
+          <div id="camera-status" class="camera-status">requesting webcam access...</div>
+        </div>
+        <div class="panel-footer">
+          <p class="panel-title">Forklift Command Feed</p>
+          <pre id="forklift-events" class="event-log">waiting for controller events...</pre>
+        </div>
+      </div>
     </div>
-    <div class="box operator-box">
+    <div class="box">
       <div class="box-label">operator</div>
-      <div class="inner-box">
-        <video id="operator-video" class="camera-feed" autoplay playsinline></video>
-        <div id="operator-status" class="camera-status">waiting for forklift video...</div>
+      <div class="panel">
+        <div class="video-stage">
+          <video id="operator-video" class="camera-feed" autoplay playsinline></video>
+          <div id="operator-status" class="camera-status">waiting for forklift video...</div>
+        </div>
+        <div class="panel-footer">
+          <p class="panel-title">Operator Controller</p>
+          <div class="controller-grid">
+            <span class="empty-cell" aria-hidden="true">.</span>
+            <button type="button" data-direction="forward">Forward</button>
+            <span class="empty-cell" aria-hidden="true">.</span>
+            <button type="button" data-direction="left">Left</button>
+            <button type="button" data-direction="backward">Backward</button>
+            <button type="button" data-direction="right">Right</button>
+          </div>
+          <p id="operator-command-status" class="operator-command-status">connecting controller...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -110,6 +210,15 @@
     const forkliftStatus = document.getElementById('camera-status');
     const operatorVideo = document.getElementById('operator-video');
     const operatorStatus = document.getElementById('operator-status');
+    const forkliftEvents = document.getElementById('forklift-events');
+    const operatorCommandStatus = document.getElementById('operator-command-status');
+    const controllerButtons = Array.from(document.querySelectorAll('[data-direction]'));
+    const textEncoder = new TextEncoder();
+    const textDecoder = new TextDecoder();
+    const commandHistory = [];
+    controllerButtons.forEach((button) => {
+      button.disabled = true;
+    });
 
     async function getToken({ identity, name, canPublish, canSubscribe, room }) {
       const params = new URLSearchParams({
@@ -126,6 +235,14 @@
         throw new Error(reason);
       }
       return body;
+    }
+
+    function appendForkliftEvent(message) {
+      commandHistory.push(message);
+      if (commandHistory.length > 14) {
+        commandHistory.shift();
+      }
+      forkliftEvents.textContent = commandHistory.join('\n');
     }
 
     async function startLiveKitStream() {
@@ -150,13 +267,13 @@
             name: 'Forklift Webcam',
             room: roomName,
             canPublish: true,
-            canSubscribe: false,
+            canSubscribe: true,
           }),
           getToken({
             identity: 'operator-video',
             name: 'Operator Video',
             room: roomName,
-            canPublish: false,
+            canPublish: true,
             canSubscribe: true,
           }),
         ]);
@@ -174,6 +291,75 @@
           operatorStatus.hidden = true;
         });
 
+        forkliftRoom.on(window.LivekitClient.RoomEvent.DataReceived, (payload) => {
+          try {
+            const command = JSON.parse(textDecoder.decode(payload));
+            const time = new Date(command.sentAt).toLocaleTimeString();
+            appendForkliftEvent(`${time} | ${command.direction} ${command.state}`);
+          } catch (error) {
+            appendForkliftEvent(`received non-command data packet (${payload.length} bytes)`);
+            console.warn('Unable to parse control payload:', error);
+          }
+        });
+
+        async function sendControlCommand(direction, state, button) {
+          const command = {
+            type: 'forklift-control',
+            direction,
+            state,
+            sentAt: new Date().toISOString(),
+          };
+          const bytes = textEncoder.encode(JSON.stringify(command));
+          const reliableKind = window.LivekitClient.DataPacket_Kind?.RELIABLE;
+          if (reliableKind !== undefined) {
+            await operatorRoom.localParticipant.publishData(bytes, reliableKind);
+          } else {
+            await operatorRoom.localParticipant.publishData(bytes);
+          }
+          operatorCommandStatus.textContent = `${direction} ${state}`;
+          if (state === 'pressed') {
+            button.classList.add('active');
+          } else {
+            button.classList.remove('active');
+          }
+        }
+
+        controllerButtons.forEach((button) => {
+          let isPressed = false;
+          const direction = button.dataset.direction;
+          const press = async () => {
+            if (isPressed) {
+              return;
+            }
+            isPressed = true;
+            try {
+              await sendControlCommand(direction, 'pressed', button);
+            } catch (error) {
+              isPressed = false;
+              operatorCommandStatus.textContent = 'failed to send command';
+              console.error('Unable to send pressed event:', error);
+            }
+          };
+          const release = async () => {
+            if (!isPressed) {
+              return;
+            }
+            isPressed = false;
+            try {
+              await sendControlCommand(direction, 'released', button);
+            } catch (error) {
+              operatorCommandStatus.textContent = 'failed to send command';
+              console.error('Unable to send released event:', error);
+            }
+          };
+          button.disabled = false;
+          button.addEventListener('pointerdown', () => { void press(); });
+          button.addEventListener('pointerup', () => { void release(); });
+          button.addEventListener('pointercancel', () => { void release(); });
+          button.addEventListener('pointerleave', () => { void release(); });
+        });
+        operatorCommandStatus.textContent = 'controller ready';
+
         const videoTrack = await window.LivekitClient.createLocalVideoTrack();
         videoTrack.attach(forkliftCamera);
         forkliftStatus.hidden = true;
@@ -181,6 +367,10 @@
       } catch (error) {
         forkliftStatus.textContent = 'unable to stream webcam to operator. check livekit env vars and camera permissions.';
         operatorStatus.textContent = 'operator video is offline.';
+        operatorCommandStatus.textContent = 'controller offline';
+        controllerButtons.forEach((button) => {
+          button.disabled = true;
+        });
         console.error('Unable to start LiveKit stream:', error);
       }
     }
