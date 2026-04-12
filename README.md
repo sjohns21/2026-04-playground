@@ -58,7 +58,7 @@ Chat with Llama 3.2 running locally via Ollama — no cloud, no API key. Support
 A ReAct agent built with LangGraph and Claude. The agent decides when to call tools (calculator, word counter, current time), and each step of the graph traversal is streamed and visualized live — AGENT and TOOLS nodes light up as the agent reasons and acts.
 
 ### Cavalla RTC
-An empty placeholder page exposed at `/cavalla-rtc`.
+LiveKit-backed forklift demo at `/cavalla-rtc` that publishes webcam video from `Forklift` to `Operator.video` (video-only, no audio).
 
 ## Setup
 
@@ -71,6 +71,9 @@ An empty placeholder page exposed at `/cavalla-rtc`.
    ```
    ANTHROPIC_API_KEY=your_key_here
    GROQ_API_KEY=your_key_here
+   LIVEKIT_URL=wss://your-livekit-host
+   LIVEKIT_API_KEY=your_livekit_key
+   LIVEKIT_API_SECRET=your_livekit_secret
    ```
 
 3. For local inference, install [Ollama](https://ollama.com) and pull a model:

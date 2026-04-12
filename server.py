@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+import time
 from urllib.parse import urlparse
 import requests
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
@@ -227,6 +228,62 @@ def gigi_graph_lab():
 @app.route("/fullstack")
 def fullstack():
     return send_from_directory(".", "fullstack.html")
+
+
+def _cavalla_livekit_config():
+    return (
+        (os.environ.get("LIVEKIT_URL") or "").strip(),
+        (os.environ.get("LIVEKIT_API_KEY") or "").strip(),
+        (os.environ.get("LIVEKIT_API_SECRET") or "").strip(),
+    )
+
+
+@app.route("/cavalla-rtc/token", methods=["GET"])
+def cavalla_rtc_token():
+    url, api_key, api_secret = _cavalla_livekit_config()
+    if not url or not api_key or not api_secret:
+        return jsonify({
+            "error": "LiveKit is not configured",
+            "code": "LIVEKIT_NOT_CONFIGURED",
+            "setup": "Set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET.",
+        }), 503
+
+    try:
+        from livekit import api as livekit_api
+    except Exception:
+        return jsonify({
+            "error": "LiveKit server SDK is unavailable",
+            "code": "LIVEKIT_SDK_MISSING",
+            "setup": "Install dependencies from requirements.txt.",
+        }), 500
+
+    room = (request.args.get("room") or "cavalla-rtc").strip()
+    identity = (request.args.get("identity") or f"participant-{int(time.time() * 1000)}").strip()
+    name = (request.args.get("name") or identity).strip()
+    can_publish = (request.args.get("canPublish") or "false").strip().lower() in {"1", "true", "yes", "on"}
+    can_subscribe = (request.args.get("canSubscribe") or "true").strip().lower() in {"1", "true", "yes", "on"}
+
+    token = (
+        livekit_api.AccessToken(api_key, api_secret)
+        .with_identity(identity)
+        .with_name(name)
+        .with_grants(
+            livekit_api.VideoGrants(
+                room=room,
+                room_join=True,
+                can_publish=can_publish,
+                can_subscribe=can_subscribe,
+            )
+        )
+        .to_jwt()
+    )
+
+    return jsonify({
+        "url": url,
+        "room": room,
+        "identity": identity,
+        "token": token,
+    })
 
 
 @app.route("/cavalla-rtc")

@@ -98,33 +98,94 @@
     </div>
     <div class="box operator-box">
       <div class="box-label">operator</div>
-      <div class="inner-box">video</div>
+      <div class="inner-box">
+        <video id="operator-video" class="camera-feed" autoplay playsinline></video>
+        <div id="operator-status" class="camera-status">waiting for forklift video...</div>
+      </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <script>
-    const camera = document.getElementById('forklift-camera');
-    const status = document.getElementById('camera-status');
+    const forkliftCamera = document.getElementById('forklift-camera');
+    const forkliftStatus = document.getElementById('camera-status');
+    const operatorVideo = document.getElementById('operator-video');
+    const operatorStatus = document.getElementById('operator-status');
 
-    async function startForkliftCamera() {
+    async function getToken({ identity, name, canPublish, canSubscribe, room }) {
+      const params = new URLSearchParams({
+        identity,
+        name,
+        room,
+        canPublish: String(canPublish),
+        canSubscribe: String(canSubscribe),
+      });
+      const response = await fetch(`/cavalla-rtc/token?${params.toString()}`);
+      const body = await response.json();
+      if (!response.ok) {
+        const reason = body?.error || 'failed to fetch livekit token';
+        throw new Error(reason);
+      }
+      return body;
+    }
+
+    async function startLiveKitStream() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        forkliftStatus.textContent = 'this browser does not support webcam streaming.';
+        return;
+      }
+
+      if (!window.LivekitClient?.Room) {
+        forkliftStatus.textContent = 'livekit sdk failed to load.';
+        return;
+      }
+
+      const roomName = 'cavalla-forklift-operator';
+      const forkliftRoom = new window.LivekitClient.Room();
+      const operatorRoom = new window.LivekitClient.Room();
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
+        const [forkliftAuth, operatorAuth] = await Promise.all([
+          getToken({
+            identity: 'forklift-webcam',
+            name: 'Forklift Webcam',
+            room: roomName,
+            canPublish: true,
+            canSubscribe: false,
+          }),
+          getToken({
+            identity: 'operator-video',
+            name: 'Operator Video',
+            room: roomName,
+            canPublish: false,
+            canSubscribe: true,
+          }),
+        ]);
+
+        await Promise.all([
+          forkliftRoom.connect(forkliftAuth.url, forkliftAuth.token),
+          operatorRoom.connect(operatorAuth.url, operatorAuth.token),
+        ]);
+
+        operatorRoom.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, publication) => {
+          if (publication.kind !== window.LivekitClient.Track.Kind.Video) {
+            return;
+          }
+          track.attach(operatorVideo);
+          operatorStatus.hidden = true;
         });
 
-        camera.srcObject = stream;
-        status.hidden = true;
+        const videoTrack = await window.LivekitClient.createLocalVideoTrack();
+        videoTrack.attach(forkliftCamera);
+        forkliftStatus.hidden = true;
+        await forkliftRoom.localParticipant.publishTrack(videoTrack);
       } catch (error) {
-        status.textContent = 'webcam unavailable. allow camera access to stream the forklift view.';
-        console.error('Unable to start webcam stream:', error);
+        forkliftStatus.textContent = 'unable to stream webcam to operator. check livekit env vars and camera permissions.';
+        operatorStatus.textContent = 'operator video is offline.';
+        console.error('Unable to start LiveKit stream:', error);
       }
     }
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      status.textContent = 'this browser does not support webcam streaming.';
-    } else {
-      startForkliftCamera();
-    }
+    startLiveKitStream();
   </script>
 </body>
 </html>
