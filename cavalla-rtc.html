@@ -83,7 +83,7 @@
 
     .box {
       flex: 1;
-      min-height: 420px;
+      min-height: 340px;
       border: 2px solid #222;
       background: #fff;
       display: flex;
@@ -111,7 +111,7 @@
     .camera-feed {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
       background: #111;
     }
@@ -128,8 +128,8 @@
       position: relative;
       border: 2px solid #222;
       background: #111;
-      min-height: 220px;
-      flex: 1;
+      min-height: 0;
+      flex: 0 0 auto;
       overflow: hidden;
     }
 
@@ -139,11 +139,12 @@
       gap: 8px;
       padding: 8px;
       box-sizing: border-box;
+      aspect-ratio: 16 / 9;
     }
 
     .video-tile {
       position: relative;
-      min-height: 180px;
+      min-height: 0;
       border: 1px solid #333;
       overflow: hidden;
     }
@@ -247,7 +248,7 @@
       }
 
       .multi-video-stage {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
   </style>
@@ -348,6 +349,7 @@
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <script>
     const MOCK_FORKLIFT_STREAMS = 6;
+    const MOCK_FORKLIFT_STREAM_NAME_PREFIX = 'mock-forklift-stream-';
     const forkliftVideoSlots = [
       {
         video: document.getElementById('forklift-camera-1'),
@@ -510,6 +512,19 @@
       return publication?.trackSid || publication?.sid || track?.sid || null;
     }
 
+    function resolveMockStreamSlotIndex(publication, slotCount) {
+      const trackName = publication?.trackName || publication?.name || '';
+      const match = new RegExp(`^${MOCK_FORKLIFT_STREAM_NAME_PREFIX}(\\d+)$`).exec(trackName);
+      if (!match) {
+        return null;
+      }
+      const candidate = Number(match[1]) - 1;
+      if (!Number.isInteger(candidate) || candidate < 0 || candidate >= slotCount) {
+        return null;
+      }
+      return candidate;
+    }
+
     async function getToken({ identity, name, canPublish, canSubscribe, room }) {
       const params = new URLSearchParams({
         identity,
@@ -585,25 +600,25 @@
         const sourceSettings = sourceTrack?.getSettings?.() || {};
         const sourceWidth = Number(sourceSettings.width) || sourceVideo.videoWidth || 1280;
         const sourceHeight = Number(sourceSettings.height) || sourceVideo.videoHeight || 720;
-        const segmentStarts = Array.from({ length: MOCK_FORKLIFT_STREAMS }, (_, index) => (
-          Math.floor((sourceWidth * index) / MOCK_FORKLIFT_STREAMS)
-        ));
-        const segmentEnds = Array.from({ length: MOCK_FORKLIFT_STREAMS }, (_, index) => (
-          index + 1 < MOCK_FORKLIFT_STREAMS
-            ? segmentStarts[index + 1]
-            : sourceWidth
-        ));
-
-        const segmentRenderers = segmentStarts.map((startX, index) => {
-          const segmentWidth = Math.max(2, segmentEnds[index] - startX);
+        const mockGridColumns = 3;
+        const mockGridRows = 2;
+        const segmentRenderers = Array.from({ length: MOCK_FORKLIFT_STREAMS }, (_, index) => {
+          const col = index % mockGridColumns;
+          const row = Math.floor(index / mockGridColumns);
+          const startX = Math.floor((sourceWidth * col) / mockGridColumns);
+          const endX = col + 1 < mockGridColumns ? Math.floor((sourceWidth * (col + 1)) / mockGridColumns) : sourceWidth;
+          const startY = Math.floor((sourceHeight * row) / mockGridRows);
+          const endY = row + 1 < mockGridRows ? Math.floor((sourceHeight * (row + 1)) / mockGridRows) : sourceHeight;
+          const segmentWidth = Math.max(2, endX - startX);
+          const segmentHeight = Math.max(2, endY - startY);
           const canvas = document.createElement('canvas');
           canvas.width = segmentWidth;
-          canvas.height = sourceHeight;
+          canvas.height = segmentHeight;
           const ctx = canvas.getContext('2d', { alpha: false });
           if (!ctx) {
             throw new Error(`unable to initialize mock canvas context ${index + 1}`);
           }
-          return { canvas, ctx, startX, segmentWidth };
+          return { canvas, ctx, startX, startY, segmentWidth, segmentHeight };
         });
 
         const canvasStreams = segmentRenderers.map(({ canvas }) => canvas.captureStream(24));
@@ -613,8 +628,8 @@
         }
 
         const renderFrame = () => {
-          segmentRenderers.forEach(({ ctx, startX, segmentWidth }) => {
-            ctx.drawImage(sourceVideo, startX, 0, segmentWidth, sourceHeight, 0, 0, segmentWidth, sourceHeight);
+          segmentRenderers.forEach(({ ctx, startX, startY, segmentWidth, segmentHeight }) => {
+            ctx.drawImage(sourceVideo, startX, startY, segmentWidth, segmentHeight, 0, 0, segmentWidth, segmentHeight);
           });
           mockRenderRafId = window.requestAnimationFrame(renderFrame);
         };
@@ -630,8 +645,10 @@
           slot.status.hidden = true;
         });
 
-        for (const track of splitTracks) {
-          await forkliftRoomRef.localParticipant.publishTrack(track);
+        for (const [index, track] of splitTracks.entries()) {
+          await forkliftRoomRef.localParticipant.publishTrack(track, {
+            name: `${MOCK_FORKLIFT_STREAM_NAME_PREFIX}${index + 1}`,
+          });
         }
         startMockButton.textContent = 'Mock Forklift Cameras Started';
       } catch (error) {
@@ -687,6 +704,9 @@
           if (publication?.kind !== window.LivekitClient.Track.Kind.Video) {
             return;
           }
+          if (mockVideoTracks.length > 0) {
+            return;
+          }
           const trackSid = resolveTrackSid(track, publication);
           if (!trackSid) {
             return;
@@ -694,8 +714,16 @@
 
           let slotIndex = forkliftVideoSlotByTrackSid.get(trackSid);
           if (slotIndex === undefined) {
+            const preferred = resolveMockStreamSlotIndex(publication, forkliftVideoSlots.length);
+            const occupiedSlotIndexes = Array.from(forkliftVideoSlotByTrackSid.values());
+            if (preferred !== null && !occupiedSlotIndexes.includes(preferred)) {
+              slotIndex = preferred;
+            }
+          }
+          if (slotIndex === undefined) {
+            const occupiedSlotIndexes = Array.from(forkliftVideoSlotByTrackSid.values());
             slotIndex = forkliftVideoSlots.findIndex((_, index) => (
-              index !== 0 && !Array.from(forkliftVideoSlotByTrackSid.values()).includes(index)
+              !occupiedSlotIndexes.includes(index)
             ));
           }
 
@@ -738,8 +766,16 @@
 
           let slotIndex = operatorVideoSlotByTrackSid.get(trackSid);
           if (slotIndex === undefined) {
+            const preferred = resolveMockStreamSlotIndex(publication, operatorVideoSlots.length);
+            const occupiedSlotIndexes = Array.from(operatorVideoSlotByTrackSid.values());
+            if (preferred !== null && !occupiedSlotIndexes.includes(preferred)) {
+              slotIndex = preferred;
+            }
+          }
+          if (slotIndex === undefined) {
+            const occupiedSlotIndexes = Array.from(operatorVideoSlotByTrackSid.values());
             slotIndex = operatorVideoSlots.findIndex((_, index) => (
-              !Array.from(operatorVideoSlotByTrackSid.values()).includes(index)
+              !occupiedSlotIndexes.includes(index)
             ));
           }
 
