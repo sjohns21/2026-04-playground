@@ -135,7 +135,7 @@
 
     .multi-video-stage {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
       padding: 8px;
       box-sizing: border-box;
@@ -274,7 +274,11 @@
           </div>
           <div class="video-tile">
             <video id="forklift-camera-2" class="camera-feed" autoplay playsinline></video>
-            <div id="camera-status-2" class="camera-status">waiting for additional forklift video stream...</div>
+            <div id="camera-status-2" class="camera-status">waiting for additional forklift video stream 2...</div>
+          </div>
+          <div class="video-tile">
+            <video id="forklift-camera-3" class="camera-feed" autoplay playsinline></video>
+            <div id="camera-status-3" class="camera-status">waiting for additional forklift video stream 3...</div>
           </div>
         </div>
         <div class="panel-footer">
@@ -295,6 +299,10 @@
           <div class="video-tile">
             <video id="operator-video-2" class="camera-feed" autoplay playsinline></video>
             <div id="operator-status-2" class="camera-status">waiting for forklift video stream 2...</div>
+          </div>
+          <div class="video-tile">
+            <video id="operator-video-3" class="camera-feed" autoplay playsinline></video>
+            <div id="operator-status-3" class="camera-status">waiting for forklift video stream 3...</div>
           </div>
         </div>
         <div class="panel-footer">
@@ -324,6 +332,10 @@
         video: document.getElementById('forklift-camera-2'),
         status: document.getElementById('camera-status-2'),
       },
+      {
+        video: document.getElementById('forklift-camera-3'),
+        status: document.getElementById('camera-status-3'),
+      },
     ];
     const operatorVideoSlots = [
       {
@@ -333,6 +345,10 @@
       {
         video: document.getElementById('operator-video-2'),
         status: document.getElementById('operator-status-2'),
+      },
+      {
+        video: document.getElementById('operator-video-3'),
+        status: document.getElementById('operator-status-3'),
       },
     ];
     const forkliftEvents = document.getElementById('forklift-events');
@@ -354,8 +370,7 @@
     let mockSourceStream = null;
     let mockSourceVideo = null;
     let mockRenderRafId = null;
-    let mockLeftCanvasStream = null;
-    let mockRightCanvasStream = null;
+    let mockCanvasStreams = [];
     let sessionConnected = false;
     let heartbeatIntervalId = null;
     let lastHeartbeatIso = null;
@@ -371,14 +386,20 @@
       primarySlot.status.textContent = message;
     }
 
+    function getForkliftWaitingStatus(slotIndex) {
+      if (slotIndex === 0) {
+        return 'mock forklift camera idle. start session, then wait for external stream or start local mock camera.';
+      }
+      return `waiting for additional forklift video stream ${slotIndex + 1}...`;
+    }
+
     function resetForkliftVideoSlots() {
       forkliftVideoSlotByTrackSid.clear();
-      forkliftVideoSlots[0].video.srcObject = null;
-      forkliftVideoSlots[0].status.hidden = false;
-      forkliftVideoSlots[0].status.textContent = 'mock forklift camera idle. start session, then wait for external stream or start local mock camera.';
-      forkliftVideoSlots[1].video.srcObject = null;
-      forkliftVideoSlots[1].status.hidden = false;
-      forkliftVideoSlots[1].status.textContent = 'waiting for additional forklift video stream...';
+      forkliftVideoSlots.forEach((slot, index) => {
+        slot.video.srcObject = null;
+        slot.status.hidden = false;
+        slot.status.textContent = getForkliftWaitingStatus(index);
+      });
     }
 
     function setForkliftVideoSlotsStatus(message) {
@@ -403,14 +424,10 @@
         }
       });
       mockVideoTracks = [];
-      if (mockLeftCanvasStream) {
-        mockLeftCanvasStream.getTracks().forEach((track) => track.stop());
-        mockLeftCanvasStream = null;
-      }
-      if (mockRightCanvasStream) {
-        mockRightCanvasStream.getTracks().forEach((track) => track.stop());
-        mockRightCanvasStream = null;
-      }
+      mockCanvasStreams.forEach((stream) => {
+        stream.getTracks().forEach((track) => track.stop());
+      });
+      mockCanvasStreams = [];
       if (mockSourceStream) {
         mockSourceStream.getTracks().forEach((track) => track.stop());
         mockSourceStream = null;
@@ -519,52 +536,56 @@
         const sourceSettings = sourceTrack?.getSettings?.() || {};
         const sourceWidth = Number(sourceSettings.width) || sourceVideo.videoWidth || 1280;
         const sourceHeight = Number(sourceSettings.height) || sourceVideo.videoHeight || 720;
-        const halfWidth = Math.max(2, Math.floor(sourceWidth / 2));
+        const segmentStarts = [
+          0,
+          Math.floor(sourceWidth / 3),
+          Math.floor((2 * sourceWidth) / 3),
+        ];
+        const segmentEnds = [
+          segmentStarts[1],
+          segmentStarts[2],
+          sourceWidth,
+        ];
 
-        const leftCanvas = document.createElement('canvas');
-        leftCanvas.width = halfWidth;
-        leftCanvas.height = sourceHeight;
-        const leftCtx = leftCanvas.getContext('2d', { alpha: false });
-        if (!leftCtx) {
-          throw new Error('unable to initialize left canvas context');
-        }
+        const segmentRenderers = segmentStarts.map((startX, index) => {
+          const segmentWidth = Math.max(2, segmentEnds[index] - startX);
+          const canvas = document.createElement('canvas');
+          canvas.width = segmentWidth;
+          canvas.height = sourceHeight;
+          const ctx = canvas.getContext('2d', { alpha: false });
+          if (!ctx) {
+            throw new Error(`unable to initialize mock canvas context ${index + 1}`);
+          }
+          return { canvas, ctx, startX, segmentWidth };
+        });
 
-        const rightCanvas = document.createElement('canvas');
-        rightCanvas.width = halfWidth;
-        rightCanvas.height = sourceHeight;
-        const rightCtx = rightCanvas.getContext('2d', { alpha: false });
-        if (!rightCtx) {
-          throw new Error('unable to initialize right canvas context');
-        }
-
-        const leftCanvasStream = leftCanvas.captureStream(24);
-        const rightCanvasStream = rightCanvas.captureStream(24);
-        const leftTrack = leftCanvasStream.getVideoTracks()[0];
-        const rightTrack = rightCanvasStream.getVideoTracks()[0];
-        if (!leftTrack || !rightTrack) {
+        const canvasStreams = segmentRenderers.map(({ canvas }) => canvas.captureStream(24));
+        const splitTracks = canvasStreams.map((stream) => stream.getVideoTracks()[0]).filter(Boolean);
+        if (splitTracks.length !== 3) {
           throw new Error('unable to create split mock video tracks');
         }
 
         const renderFrame = () => {
-          leftCtx.drawImage(sourceVideo, 0, 0, halfWidth, sourceHeight, 0, 0, halfWidth, sourceHeight);
-          rightCtx.drawImage(sourceVideo, sourceWidth - halfWidth, 0, halfWidth, sourceHeight, 0, 0, halfWidth, sourceHeight);
+          segmentRenderers.forEach(({ ctx, startX, segmentWidth }) => {
+            ctx.drawImage(sourceVideo, startX, 0, segmentWidth, sourceHeight, 0, 0, segmentWidth, sourceHeight);
+          });
           mockRenderRafId = window.requestAnimationFrame(renderFrame);
         };
         mockRenderRafId = window.requestAnimationFrame(renderFrame);
 
         mockSourceStream = sourceStream;
         mockSourceVideo = sourceVideo;
-        mockLeftCanvasStream = leftCanvasStream;
-        mockRightCanvasStream = rightCanvasStream;
-        mockVideoTracks = [leftTrack, rightTrack];
+        mockCanvasStreams = canvasStreams;
+        mockVideoTracks = splitTracks;
 
-        forkliftVideoSlots[0].video.srcObject = new MediaStream([leftTrack]);
-        forkliftVideoSlots[1].video.srcObject = new MediaStream([rightTrack]);
-        forkliftVideoSlots[0].status.hidden = true;
-        forkliftVideoSlots[1].status.hidden = true;
+        forkliftVideoSlots.forEach((slot, index) => {
+          slot.video.srcObject = new MediaStream([splitTracks[index]]);
+          slot.status.hidden = true;
+        });
 
-        await forkliftRoomRef.localParticipant.publishTrack(leftTrack);
-        await forkliftRoomRef.localParticipant.publishTrack(rightTrack);
+        for (const track of splitTracks) {
+          await forkliftRoomRef.localParticipant.publishTrack(track);
+        }
         startMockButton.textContent = 'Mock Forklift Cameras Started';
       } catch (error) {
         stopMockForkliftCameraCapture();
@@ -655,7 +676,7 @@
           track.detach(slot.video);
           slot.video.srcObject = null;
           slot.status.hidden = false;
-          slot.status.textContent = 'waiting for additional forklift video stream...';
+          slot.status.textContent = getForkliftWaitingStatus(slotIndex);
           forkliftVideoSlotByTrackSid.delete(trackSid);
         });
 
