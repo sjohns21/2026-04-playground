@@ -60,6 +60,10 @@
       height: 42px;
     }
 
+    .join-room-button.mock-start {
+      border-style: dashed;
+    }
+
     .join-room-button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
@@ -230,6 +234,7 @@
       <input id="room-input" type="text" value="cavalla-forklift-operator" autocomplete="off" spellcheck="false" />
     </div>
     <button id="join-room-button" class="join-room-button" type="button">Start Session</button>
+    <button id="start-mock-button" class="join-room-button mock-start" type="button" disabled>Start Mock Forklift Camera</button>
     <p id="room-meta" class="room-meta">room not connected</p>
   </div>
   <div class="lane">
@@ -238,7 +243,7 @@
       <div class="panel">
         <div class="video-stage">
           <video id="forklift-camera" class="camera-feed" autoplay muted playsinline></video>
-          <div id="camera-status" class="camera-status">requesting webcam access...</div>
+          <div id="camera-status" class="camera-status">mock forklift camera idle. start session, then wait for external stream or start local mock camera.</div>
         </div>
         <div class="panel-footer">
           <p class="panel-title">Forklift Command Feed</p>
@@ -278,6 +283,7 @@
     const operatorCommandStatus = document.getElementById('operator-command-status');
     const roomInput = document.getElementById('room-input');
     const joinRoomButton = document.getElementById('join-room-button');
+    const startMockButton = document.getElementById('start-mock-button');
     const roomMeta = document.getElementById('room-meta');
     const controllerButtons = Array.from(document.querySelectorAll('[data-direction]'));
     const textEncoder = new TextEncoder();
@@ -285,6 +291,9 @@
     const commandHistory = [];
     const sessionTag = Math.random().toString(36).slice(2, 8);
     let controlsBound = false;
+    let forkliftRoomRef = null;
+    let mockVideoTrack = null;
+    let sessionConnected = false;
     controllerButtons.forEach((button) => {
       button.disabled = true;
     });
@@ -329,12 +338,32 @@
       roomInput.disabled = isPending;
     }
 
-    async function startLiveKitStream() {
+    async function startMockForkliftCamera() {
+      if (mockVideoTrack || !forkliftRoomRef || !sessionConnected) {
+        return;
+      }
       if (!navigator.mediaDevices?.getUserMedia) {
         forkliftStatus.textContent = 'this browser does not support webcam streaming.';
         return;
       }
+      startMockButton.disabled = true;
+      forkliftStatus.hidden = false;
+      forkliftStatus.textContent = 'starting mock forklift webcam...';
+      try {
+        mockVideoTrack = await window.LivekitClient.createLocalVideoTrack();
+        mockVideoTrack.attach(forkliftCamera);
+        forkliftStatus.hidden = true;
+        await forkliftRoomRef.localParticipant.publishTrack(mockVideoTrack);
+        startMockButton.textContent = 'Mock Forklift Camera Started';
+      } catch (error) {
+        forkliftStatus.hidden = false;
+        forkliftStatus.textContent = 'unable to start mock webcam. check permissions.';
+        startMockButton.disabled = false;
+        console.error('Unable to start mock forklift camera:', error);
+      }
+    }
 
+    async function startLiveKitStream() {
       if (!window.LivekitClient?.Room) {
         forkliftStatus.textContent = 'livekit sdk failed to load.';
         return;
@@ -343,6 +372,8 @@
       const roomName = resolveRoomName();
       roomInput.value = roomName;
       roomMeta.textContent = `joining room: ${roomName}`;
+      forkliftStatus.hidden = false;
+      forkliftStatus.textContent = 'connecting room...';
       setSessionPendingState(true);
       const forkliftRoom = new window.LivekitClient.Room();
       const operatorRoom = new window.LivekitClient.Room();
@@ -369,6 +400,8 @@
           forkliftRoom.connect(forkliftAuth.url, forkliftAuth.token),
           operatorRoom.connect(operatorAuth.url, operatorAuth.token),
         ]);
+        forkliftRoomRef = forkliftRoom;
+        sessionConnected = true;
 
         operatorRoom.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, publication) => {
           if (publication.kind !== window.LivekitClient.Track.Kind.Video) {
@@ -452,17 +485,17 @@
         });
         operatorCommandStatus.textContent = 'controller ready';
         roomMeta.textContent = `connected to room: ${roomName}`;
+        forkliftStatus.textContent = 'connected. waiting for external forklift stream or start local mock camera.';
+        startMockButton.disabled = false;
         window.history.replaceState({}, '', `${window.location.pathname}?room=${encodeURIComponent(roomName)}`);
-
-        const videoTrack = await window.LivekitClient.createLocalVideoTrack();
-        videoTrack.attach(forkliftCamera);
-        forkliftStatus.hidden = true;
-        await forkliftRoom.localParticipant.publishTrack(videoTrack);
       } catch (error) {
-        forkliftStatus.textContent = 'unable to stream webcam to operator. check livekit env vars and camera permissions.';
+        forkliftStatus.textContent = 'unable to start session. check livekit env vars and room connectivity.';
         operatorStatus.textContent = 'operator video is offline.';
         operatorCommandStatus.textContent = 'controller offline';
         roomMeta.textContent = 'failed to connect room';
+        sessionConnected = false;
+        forkliftRoomRef = null;
+        startMockButton.disabled = true;
         controllerButtons.forEach((button) => {
           button.disabled = true;
         });
@@ -475,6 +508,9 @@
     roomMeta.textContent = `ready to join: ${roomInput.value}`;
     joinRoomButton.addEventListener('click', () => {
       void startLiveKitStream();
+    });
+    startMockButton.addEventListener('click', () => {
+      void startMockForkliftCamera();
     });
     roomInput.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') {
