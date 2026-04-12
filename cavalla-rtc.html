@@ -133,7 +133,7 @@
       overflow: hidden;
     }
 
-    .operator-multi-stage {
+    .multi-video-stage {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
@@ -141,7 +141,7 @@
       box-sizing: border-box;
     }
 
-    .operator-video-tile {
+    .video-tile {
       position: relative;
       min-height: 180px;
       border: 1px solid #333;
@@ -246,7 +246,7 @@
         flex-direction: column;
       }
 
-      .operator-multi-stage {
+      .multi-video-stage {
         grid-template-columns: 1fr;
       }
     }
@@ -267,9 +267,15 @@
     <div class="box">
       <div class="box-label">forklift</div>
       <div class="panel">
-        <div class="video-stage">
-          <video id="forklift-camera" class="camera-feed" autoplay muted playsinline></video>
-          <div id="camera-status" class="camera-status">mock forklift camera idle. start session, then wait for external stream or start local mock camera.</div>
+        <div class="video-stage multi-video-stage">
+          <div class="video-tile">
+            <video id="forklift-camera-1" class="camera-feed" autoplay muted playsinline></video>
+            <div id="camera-status-1" class="camera-status">mock forklift camera idle. start session, then wait for external stream or start local mock camera.</div>
+          </div>
+          <div class="video-tile">
+            <video id="forklift-camera-2" class="camera-feed" autoplay playsinline></video>
+            <div id="camera-status-2" class="camera-status">waiting for additional forklift video stream...</div>
+          </div>
         </div>
         <div class="panel-footer">
           <p class="panel-title">Forklift Command Feed</p>
@@ -281,12 +287,12 @@
     <div class="box">
       <div class="box-label">operator</div>
       <div class="panel">
-        <div class="video-stage operator-multi-stage">
-          <div class="operator-video-tile">
+        <div class="video-stage multi-video-stage">
+          <div class="video-tile">
             <video id="operator-video-1" class="camera-feed" autoplay playsinline></video>
             <div id="operator-status-1" class="camera-status">waiting for forklift video stream 1...</div>
           </div>
-          <div class="operator-video-tile">
+          <div class="video-tile">
             <video id="operator-video-2" class="camera-feed" autoplay playsinline></video>
             <div id="operator-status-2" class="camera-status">waiting for forklift video stream 2...</div>
           </div>
@@ -309,8 +315,16 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <script>
-    const forkliftCamera = document.getElementById('forklift-camera');
-    const forkliftStatus = document.getElementById('camera-status');
+    const forkliftVideoSlots = [
+      {
+        video: document.getElementById('forklift-camera-1'),
+        status: document.getElementById('camera-status-1'),
+      },
+      {
+        video: document.getElementById('forklift-camera-2'),
+        status: document.getElementById('camera-status-2'),
+      },
+    ];
     const operatorVideoSlots = [
       {
         video: document.getElementById('operator-video-1'),
@@ -336,14 +350,77 @@
     const sessionTag = Math.random().toString(36).slice(2, 8);
     let controlsBound = false;
     let forkliftRoomRef = null;
-    let mockVideoTrack = null;
+    let mockVideoTracks = [];
+    let mockSourceStream = null;
+    let mockSourceVideo = null;
+    let mockRenderRafId = null;
+    let mockLeftCanvasStream = null;
+    let mockRightCanvasStream = null;
     let sessionConnected = false;
     let heartbeatIntervalId = null;
     let lastHeartbeatIso = null;
     const operatorVideoSlotByTrackSid = new Map();
+    const forkliftVideoSlotByTrackSid = new Map();
     controllerButtons.forEach((button) => {
       button.disabled = true;
     });
+
+    function setForkliftPrimaryStatus(message) {
+      const primarySlot = forkliftVideoSlots[0];
+      primarySlot.status.hidden = false;
+      primarySlot.status.textContent = message;
+    }
+
+    function resetForkliftVideoSlots() {
+      forkliftVideoSlotByTrackSid.clear();
+      forkliftVideoSlots[0].video.srcObject = null;
+      forkliftVideoSlots[0].status.hidden = false;
+      forkliftVideoSlots[0].status.textContent = 'mock forklift camera idle. start session, then wait for external stream or start local mock camera.';
+      forkliftVideoSlots[1].video.srcObject = null;
+      forkliftVideoSlots[1].status.hidden = false;
+      forkliftVideoSlots[1].status.textContent = 'waiting for additional forklift video stream...';
+    }
+
+    function setForkliftVideoSlotsStatus(message) {
+      forkliftVideoSlotByTrackSid.clear();
+      forkliftVideoSlots.forEach((slot) => {
+        slot.video.srcObject = null;
+        slot.status.hidden = false;
+        slot.status.textContent = message;
+      });
+    }
+
+    function stopMockForkliftCameraCapture() {
+      if (mockRenderRafId) {
+        window.cancelAnimationFrame(mockRenderRafId);
+        mockRenderRafId = null;
+      }
+      mockVideoTracks.forEach((track) => {
+        try {
+          track.stop();
+        } catch (error) {
+          console.warn('Unable to stop mock track cleanly:', error);
+        }
+      });
+      mockVideoTracks = [];
+      if (mockLeftCanvasStream) {
+        mockLeftCanvasStream.getTracks().forEach((track) => track.stop());
+        mockLeftCanvasStream = null;
+      }
+      if (mockRightCanvasStream) {
+        mockRightCanvasStream.getTracks().forEach((track) => track.stop());
+        mockRightCanvasStream = null;
+      }
+      if (mockSourceStream) {
+        mockSourceStream.getTracks().forEach((track) => track.stop());
+        mockSourceStream = null;
+      }
+      if (mockSourceVideo) {
+        mockSourceVideo.pause();
+        mockSourceVideo.srcObject = null;
+        mockSourceVideo = null;
+      }
+    }
 
     function resetOperatorVideoSlots(statusPrefix = 'waiting for forklift video stream') {
       operatorVideoSlotByTrackSid.clear();
@@ -417,25 +494,81 @@
     }
 
     async function startMockForkliftCamera() {
-      if (mockVideoTrack || !forkliftRoomRef || !sessionConnected) {
+      if (mockVideoTracks.length || !forkliftRoomRef || !sessionConnected) {
         return;
       }
       if (!navigator.mediaDevices?.getUserMedia) {
-        forkliftStatus.textContent = 'this browser does not support webcam streaming.';
+        setForkliftPrimaryStatus('this browser does not support webcam streaming.');
         return;
       }
       startMockButton.disabled = true;
-      forkliftStatus.hidden = false;
-      forkliftStatus.textContent = 'starting mock forklift webcam...';
+      setForkliftPrimaryStatus('starting mock forklift webcam...');
       try {
-        mockVideoTrack = await window.LivekitClient.createLocalVideoTrack();
-        mockVideoTrack.attach(forkliftCamera);
-        forkliftStatus.hidden = true;
-        await forkliftRoomRef.localParticipant.publishTrack(mockVideoTrack);
-        startMockButton.textContent = 'Mock Forklift Camera Started';
+        const sourceStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+        const sourceVideo = document.createElement('video');
+        sourceVideo.autoplay = true;
+        sourceVideo.muted = true;
+        sourceVideo.playsInline = true;
+        sourceVideo.srcObject = sourceStream;
+        await sourceVideo.play();
+
+        const sourceTrack = sourceStream.getVideoTracks()[0];
+        const sourceSettings = sourceTrack?.getSettings?.() || {};
+        const sourceWidth = Number(sourceSettings.width) || sourceVideo.videoWidth || 1280;
+        const sourceHeight = Number(sourceSettings.height) || sourceVideo.videoHeight || 720;
+        const halfWidth = Math.max(2, Math.floor(sourceWidth / 2));
+
+        const leftCanvas = document.createElement('canvas');
+        leftCanvas.width = halfWidth;
+        leftCanvas.height = sourceHeight;
+        const leftCtx = leftCanvas.getContext('2d', { alpha: false });
+        if (!leftCtx) {
+          throw new Error('unable to initialize left canvas context');
+        }
+
+        const rightCanvas = document.createElement('canvas');
+        rightCanvas.width = halfWidth;
+        rightCanvas.height = sourceHeight;
+        const rightCtx = rightCanvas.getContext('2d', { alpha: false });
+        if (!rightCtx) {
+          throw new Error('unable to initialize right canvas context');
+        }
+
+        const leftCanvasStream = leftCanvas.captureStream(24);
+        const rightCanvasStream = rightCanvas.captureStream(24);
+        const leftTrack = leftCanvasStream.getVideoTracks()[0];
+        const rightTrack = rightCanvasStream.getVideoTracks()[0];
+        if (!leftTrack || !rightTrack) {
+          throw new Error('unable to create split mock video tracks');
+        }
+
+        const renderFrame = () => {
+          leftCtx.drawImage(sourceVideo, 0, 0, halfWidth, sourceHeight, 0, 0, halfWidth, sourceHeight);
+          rightCtx.drawImage(sourceVideo, sourceWidth - halfWidth, 0, halfWidth, sourceHeight, 0, 0, halfWidth, sourceHeight);
+          mockRenderRafId = window.requestAnimationFrame(renderFrame);
+        };
+        mockRenderRafId = window.requestAnimationFrame(renderFrame);
+
+        mockSourceStream = sourceStream;
+        mockSourceVideo = sourceVideo;
+        mockLeftCanvasStream = leftCanvasStream;
+        mockRightCanvasStream = rightCanvasStream;
+        mockVideoTracks = [leftTrack, rightTrack];
+
+        forkliftVideoSlots[0].video.srcObject = new MediaStream([leftTrack]);
+        forkliftVideoSlots[1].video.srcObject = new MediaStream([rightTrack]);
+        forkliftVideoSlots[0].status.hidden = true;
+        forkliftVideoSlots[1].status.hidden = true;
+
+        await forkliftRoomRef.localParticipant.publishTrack(leftTrack);
+        await forkliftRoomRef.localParticipant.publishTrack(rightTrack);
+        startMockButton.textContent = 'Mock Forklift Cameras Started';
       } catch (error) {
-        forkliftStatus.hidden = false;
-        forkliftStatus.textContent = 'unable to start mock webcam. check permissions.';
+        stopMockForkliftCameraCapture();
+        setForkliftPrimaryStatus('unable to start mock webcam. check permissions.');
         startMockButton.disabled = false;
         console.error('Unable to start mock forklift camera:', error);
       }
@@ -443,15 +576,15 @@
 
     async function startLiveKitStream() {
       if (!window.LivekitClient?.Room) {
-        forkliftStatus.textContent = 'livekit sdk failed to load.';
+        setForkliftPrimaryStatus('livekit sdk failed to load.');
         return;
       }
 
       const roomName = resolveRoomName();
       roomInput.value = roomName;
       roomMeta.textContent = `joining room: ${roomName}`;
-      forkliftStatus.hidden = false;
-      forkliftStatus.textContent = 'connecting room...';
+      resetForkliftVideoSlots();
+      setForkliftPrimaryStatus('connecting room...');
       setSessionPendingState(true);
       const forkliftRoom = new window.LivekitClient.Room();
       const operatorRoom = new window.LivekitClient.Room();
@@ -481,6 +614,50 @@
         ]);
         forkliftRoomRef = forkliftRoom;
         sessionConnected = true;
+
+        forkliftRoom.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, publication) => {
+          if (publication?.kind !== window.LivekitClient.Track.Kind.Video) {
+            return;
+          }
+          const trackSid = resolveTrackSid(track, publication);
+          if (!trackSid) {
+            return;
+          }
+
+          let slotIndex = forkliftVideoSlotByTrackSid.get(trackSid);
+          if (slotIndex === undefined) {
+            slotIndex = forkliftVideoSlots.findIndex((_, index) => (
+              index !== 0 && !Array.from(forkliftVideoSlotByTrackSid.values()).includes(index)
+            ));
+          }
+
+          if (slotIndex === -1) {
+            console.warn('Received additional forklift video stream but no forklift slot is available.');
+            return;
+          }
+
+          const slot = forkliftVideoSlots[slotIndex];
+          track.attach(slot.video);
+          slot.status.hidden = true;
+          forkliftVideoSlotByTrackSid.set(trackSid, slotIndex);
+        });
+
+        forkliftRoom.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, (track, publication) => {
+          if (publication?.kind !== window.LivekitClient.Track.Kind.Video) {
+            return;
+          }
+          const trackSid = resolveTrackSid(track, publication);
+          if (!trackSid || !forkliftVideoSlotByTrackSid.has(trackSid)) {
+            return;
+          }
+          const slotIndex = forkliftVideoSlotByTrackSid.get(trackSid);
+          const slot = forkliftVideoSlots[slotIndex];
+          track.detach(slot.video);
+          slot.video.srcObject = null;
+          slot.status.hidden = false;
+          slot.status.textContent = 'waiting for additional forklift video stream...';
+          forkliftVideoSlotByTrackSid.delete(trackSid);
+        });
 
         operatorRoom.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, publication) => {
           if (publication?.kind !== window.LivekitClient.Track.Kind.Video) {
@@ -630,12 +807,12 @@
         operatorCommandStatus.textContent = 'controller ready';
         operatorHeartbeatStatus.textContent = 'sending heartbeat every 1s';
         roomMeta.textContent = `connected to room: ${roomName}`;
-        forkliftStatus.textContent = 'connected. waiting for external forklift stream or start local mock camera.';
+        setForkliftPrimaryStatus('connected. waiting for external forklift stream or start local mock camera.');
         startMockButton.disabled = false;
         renderHeartbeat();
         window.history.replaceState({}, '', `${window.location.pathname}?room=${encodeURIComponent(roomName)}`);
       } catch (error) {
-        forkliftStatus.textContent = 'unable to start session. check livekit env vars and room connectivity.';
+        setForkliftVideoSlotsStatus('unable to start session. check livekit env vars and room connectivity.');
         setOperatorVideoSlotsStatus('operator video is offline.');
         operatorCommandStatus.textContent = 'controller offline';
         operatorHeartbeatStatus.textContent = 'heartbeat transmitter offline';

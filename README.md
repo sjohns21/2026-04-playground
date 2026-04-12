@@ -58,7 +58,7 @@ Chat with Llama 3.2 running locally via Ollama — no cloud, no API key. Support
 A ReAct agent built with LangGraph and Claude. The agent decides when to call tools (calculator, word counter, current time), and each step of the graph traversal is streamed and visualized live — AGENT and TOOLS nodes light up as the agent reasons and acts.
 
 ### Cavalla RTC
-LiveKit-backed forklift demo at `/cavalla-rtc` that publishes webcam video from `Forklift` to two operator video tiles (video-only, no audio).
+LiveKit-backed forklift demo at `/cavalla-rtc` with two video tiles in both the forklift and operator panels (video-only, no audio).
 
 ## Setup
 
