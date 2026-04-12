@@ -219,6 +219,13 @@
       min-height: 18px;
     }
 
+    .heartbeat-status {
+      margin: 0;
+      font-size: 13px;
+      min-height: 18px;
+      font-family: "Courier New", monospace;
+    }
+
     @media (max-width: 900px) {
       .lane {
         flex-direction: column;
@@ -248,6 +255,7 @@
         <div class="panel-footer">
           <p class="panel-title">Forklift Command Feed</p>
           <pre id="forklift-events" class="event-log">waiting for controller events...</pre>
+          <p id="forklift-heartbeat" class="heartbeat-status">operator heartbeat: waiting...</p>
         </div>
       </div>
     </div>
@@ -269,6 +277,7 @@
             <button type="button" data-direction="right">Right</button>
           </div>
           <p id="operator-command-status" class="operator-command-status">connecting controller...</p>
+          <p id="operator-heartbeat-status" class="heartbeat-status">heartbeat transmitter offline</p>
         </div>
       </div>
     </div>
@@ -280,7 +289,9 @@
     const operatorVideo = document.getElementById('operator-video');
     const operatorStatus = document.getElementById('operator-status');
     const forkliftEvents = document.getElementById('forklift-events');
+    const forkliftHeartbeat = document.getElementById('forklift-heartbeat');
     const operatorCommandStatus = document.getElementById('operator-command-status');
+    const operatorHeartbeatStatus = document.getElementById('operator-heartbeat-status');
     const roomInput = document.getElementById('room-input');
     const joinRoomButton = document.getElementById('join-room-button');
     const startMockButton = document.getElementById('start-mock-button');
@@ -294,6 +305,8 @@
     let forkliftRoomRef = null;
     let mockVideoTrack = null;
     let sessionConnected = false;
+    let heartbeatIntervalId = null;
+    let lastHeartbeatIso = null;
     controllerButtons.forEach((button) => {
       button.disabled = true;
     });
@@ -331,6 +344,15 @@
 
     function resolveRoomName() {
       return normalizeRoomName(roomInput.value);
+    }
+
+    function renderHeartbeat() {
+      if (!lastHeartbeatIso) {
+        forkliftHeartbeat.textContent = 'operator heartbeat: waiting...';
+        return;
+      }
+      const receivedAt = new Date(lastHeartbeatIso);
+      forkliftHeartbeat.textContent = `operator heartbeat: ${receivedAt.toLocaleTimeString()}`;
     }
 
     function setSessionPendingState(isPending) {
@@ -413,9 +435,14 @@
 
         forkliftRoom.on(window.LivekitClient.RoomEvent.DataReceived, (payload) => {
           try {
-            const command = JSON.parse(textDecoder.decode(payload));
-            const time = new Date(command.sentAt).toLocaleTimeString();
-            appendForkliftEvent(`${time} | ${command.direction} ${command.state}`);
+            const message = JSON.parse(textDecoder.decode(payload));
+            if (message.type === 'forklift-heartbeat') {
+              lastHeartbeatIso = message.sentAt || new Date().toISOString();
+              renderHeartbeat();
+              return;
+            }
+            const time = new Date(message.sentAt).toLocaleTimeString();
+            appendForkliftEvent(`${time} | ${message.direction} ${message.state}`);
           } catch (error) {
             appendForkliftEvent(`received non-command data packet (${payload.length} bytes)`);
             console.warn('Unable to parse control payload:', error);
@@ -483,18 +510,49 @@
         controllerButtons.forEach((button) => {
           button.disabled = false;
         });
+        const sendHeartbeat = async () => {
+          const heartbeat = {
+            type: 'forklift-heartbeat',
+            sentAt: new Date().toISOString(),
+          };
+          const bytes = textEncoder.encode(JSON.stringify(heartbeat));
+          const reliableKind = window.LivekitClient.DataPacket_Kind?.RELIABLE;
+          if (reliableKind !== undefined) {
+            await operatorRoom.localParticipant.publishData(bytes, reliableKind);
+          } else {
+            await operatorRoom.localParticipant.publishData(bytes);
+          }
+        };
+        if (heartbeatIntervalId) {
+          window.clearInterval(heartbeatIntervalId);
+          heartbeatIntervalId = null;
+        }
+        void sendHeartbeat();
+        heartbeatIntervalId = window.setInterval(() => {
+          void sendHeartbeat().catch((error) => {
+            operatorHeartbeatStatus.textContent = 'heartbeat send failed';
+            console.error('Unable to send heartbeat:', error);
+          });
+        }, 1000);
         operatorCommandStatus.textContent = 'controller ready';
+        operatorHeartbeatStatus.textContent = 'sending heartbeat every 1s';
         roomMeta.textContent = `connected to room: ${roomName}`;
         forkliftStatus.textContent = 'connected. waiting for external forklift stream or start local mock camera.';
         startMockButton.disabled = false;
+        renderHeartbeat();
         window.history.replaceState({}, '', `${window.location.pathname}?room=${encodeURIComponent(roomName)}`);
       } catch (error) {
         forkliftStatus.textContent = 'unable to start session. check livekit env vars and room connectivity.';
         operatorStatus.textContent = 'operator video is offline.';
         operatorCommandStatus.textContent = 'controller offline';
+        operatorHeartbeatStatus.textContent = 'heartbeat transmitter offline';
         roomMeta.textContent = 'failed to connect room';
         sessionConnected = false;
         forkliftRoomRef = null;
+        if (heartbeatIntervalId) {
+          window.clearInterval(heartbeatIntervalId);
+          heartbeatIntervalId = null;
+        }
         startMockButton.disabled = true;
         controllerButtons.forEach((button) => {
           button.disabled = true;
