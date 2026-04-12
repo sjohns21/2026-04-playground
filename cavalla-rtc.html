@@ -19,6 +19,58 @@
       line-height: 1.4;
     }
 
+    .session-controls {
+      margin: 0 0 18px;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .control-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-field label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .control-field input {
+      border: 2px solid #222;
+      min-width: 280px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: "Courier New", monospace;
+    }
+
+    .join-room-button {
+      border: 2px solid #222;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 10px 14px;
+      cursor: pointer;
+      height: 42px;
+    }
+
+    .join-room-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .room-meta {
+      margin: 0;
+      font-size: 13px;
+      min-height: 18px;
+    }
+
     .lane {
       display: flex;
       justify-content: space-between;
@@ -172,6 +224,14 @@
 </head>
 <body>
   <h1>project: service that streams video from fork lifts to remote operators. the remote operations should be able to view video, and send commands back to the fork lift.</h1>
+  <div class="session-controls">
+    <div class="control-field">
+      <label for="room-input">Room / Channel</label>
+      <input id="room-input" type="text" value="cavalla-forklift-operator" autocomplete="off" spellcheck="false" />
+    </div>
+    <button id="join-room-button" class="join-room-button" type="button">Start Session</button>
+    <p id="room-meta" class="room-meta">room not connected</p>
+  </div>
   <div class="lane">
     <div class="box">
       <div class="box-label">forklift</div>
@@ -216,10 +276,15 @@
     const operatorStatus = document.getElementById('operator-status');
     const forkliftEvents = document.getElementById('forklift-events');
     const operatorCommandStatus = document.getElementById('operator-command-status');
+    const roomInput = document.getElementById('room-input');
+    const joinRoomButton = document.getElementById('join-room-button');
+    const roomMeta = document.getElementById('room-meta');
     const controllerButtons = Array.from(document.querySelectorAll('[data-direction]'));
     const textEncoder = new TextEncoder();
     const textDecoder = new TextDecoder();
     const commandHistory = [];
+    const sessionTag = Math.random().toString(36).slice(2, 8);
+    let controlsBound = false;
     controllerButtons.forEach((button) => {
       button.disabled = true;
     });
@@ -249,6 +314,21 @@
       forkliftEvents.textContent = commandHistory.join('\n');
     }
 
+    function normalizeRoomName(rawValue) {
+      const candidate = (rawValue || '').trim();
+      const normalized = candidate.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-');
+      return normalized || 'cavalla-forklift-operator';
+    }
+
+    function resolveRoomName() {
+      return normalizeRoomName(roomInput.value);
+    }
+
+    function setSessionPendingState(isPending) {
+      joinRoomButton.disabled = isPending;
+      roomInput.disabled = isPending;
+    }
+
     async function startLiveKitStream() {
       if (!navigator.mediaDevices?.getUserMedia) {
         forkliftStatus.textContent = 'this browser does not support webcam streaming.';
@@ -260,21 +340,24 @@
         return;
       }
 
-      const roomName = 'cavalla-forklift-operator';
+      const roomName = resolveRoomName();
+      roomInput.value = roomName;
+      roomMeta.textContent = `joining room: ${roomName}`;
+      setSessionPendingState(true);
       const forkliftRoom = new window.LivekitClient.Room();
       const operatorRoom = new window.LivekitClient.Room();
 
       try {
         const [forkliftAuth, operatorAuth] = await Promise.all([
           getToken({
-            identity: 'forklift-webcam',
+            identity: `forklift-webcam-${sessionTag}`,
             name: 'Forklift Webcam',
             room: roomName,
             canPublish: true,
             canSubscribe: true,
           }),
           getToken({
-            identity: 'operator-video',
+            identity: `operator-video-${sessionTag}`,
             name: 'Operator Video',
             room: roomName,
             canPublish: true,
@@ -328,41 +411,48 @@
           }
         }
 
-        controllerButtons.forEach((button) => {
-          let isPressed = false;
-          const direction = button.dataset.direction;
-          const press = async () => {
-            if (isPressed) {
-              return;
-            }
-            isPressed = true;
-            try {
-              await sendControlCommand(direction, 'pressed', button);
-            } catch (error) {
+        if (!controlsBound) {
+          controllerButtons.forEach((button) => {
+            let isPressed = false;
+            const direction = button.dataset.direction;
+            const press = async () => {
+              if (isPressed) {
+                return;
+              }
+              isPressed = true;
+              try {
+                await sendControlCommand(direction, 'pressed', button);
+              } catch (error) {
+                isPressed = false;
+                operatorCommandStatus.textContent = 'failed to send command';
+                console.error('Unable to send pressed event:', error);
+              }
+            };
+            const release = async () => {
+              if (!isPressed) {
+                return;
+              }
               isPressed = false;
-              operatorCommandStatus.textContent = 'failed to send command';
-              console.error('Unable to send pressed event:', error);
-            }
-          };
-          const release = async () => {
-            if (!isPressed) {
-              return;
-            }
-            isPressed = false;
-            try {
-              await sendControlCommand(direction, 'released', button);
-            } catch (error) {
-              operatorCommandStatus.textContent = 'failed to send command';
-              console.error('Unable to send released event:', error);
-            }
-          };
+              try {
+                await sendControlCommand(direction, 'released', button);
+              } catch (error) {
+                operatorCommandStatus.textContent = 'failed to send command';
+                console.error('Unable to send released event:', error);
+              }
+            };
+            button.addEventListener('pointerdown', () => { void press(); });
+            button.addEventListener('pointerup', () => { void release(); });
+            button.addEventListener('pointercancel', () => { void release(); });
+            button.addEventListener('pointerleave', () => { void release(); });
+          });
+          controlsBound = true;
+        }
+        controllerButtons.forEach((button) => {
           button.disabled = false;
-          button.addEventListener('pointerdown', () => { void press(); });
-          button.addEventListener('pointerup', () => { void release(); });
-          button.addEventListener('pointercancel', () => { void release(); });
-          button.addEventListener('pointerleave', () => { void release(); });
         });
         operatorCommandStatus.textContent = 'controller ready';
+        roomMeta.textContent = `connected to room: ${roomName}`;
+        window.history.replaceState({}, '', `${window.location.pathname}?room=${encodeURIComponent(roomName)}`);
 
         const videoTrack = await window.LivekitClient.createLocalVideoTrack();
         videoTrack.attach(forkliftCamera);
@@ -372,14 +462,27 @@
         forkliftStatus.textContent = 'unable to stream webcam to operator. check livekit env vars and camera permissions.';
         operatorStatus.textContent = 'operator video is offline.';
         operatorCommandStatus.textContent = 'controller offline';
+        roomMeta.textContent = 'failed to connect room';
         controllerButtons.forEach((button) => {
           button.disabled = true;
         });
+        setSessionPendingState(false);
         console.error('Unable to start LiveKit stream:', error);
       }
     }
 
-    startLiveKitStream();
+    roomInput.value = normalizeRoomName(new URLSearchParams(window.location.search).get('room') || roomInput.value);
+    roomMeta.textContent = `ready to join: ${roomInput.value}`;
+    joinRoomButton.addEventListener('click', () => {
+      void startLiveKitStream();
+    });
+    roomInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') {
+        return;
+      }
+      event.preventDefault();
+      void startLiveKitStream();
+    });
   </script>
 </body>
 </html>
