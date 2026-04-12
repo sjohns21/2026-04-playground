@@ -205,6 +205,11 @@
       max-width: 280px;
     }
 
+    .fork-controller-grid {
+      grid-template-columns: repeat(2, minmax(110px, 1fr));
+      max-width: 280px;
+    }
+
     .controller-grid button {
       border: 2px solid #222;
       background: #fff;
@@ -213,6 +218,14 @@
       font-weight: 700;
       padding: 10px 8px;
       cursor: pointer;
+    }
+
+    .controller-grid button.text-control {
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.2;
+      padding: 12px 8px;
     }
 
     .controller-grid button:disabled {
@@ -339,6 +352,10 @@
             <button type="button" data-direction="left" aria-label="Left" title="Left">&#8592;</button>
             <button type="button" data-direction="backward" aria-label="Backward" title="Backward">&#8595;</button>
             <button type="button" data-direction="right" aria-label="Right" title="Right">&#8594;</button>
+          </div>
+          <div class="controller-grid fork-controller-grid">
+            <button type="button" class="text-control" data-direction="fork-rise" aria-label="Fork Rise" title="Fork Rise">Fork Rise</button>
+            <button type="button" class="text-control" data-direction="fork-lower" aria-label="Fork Lower" title="Fork Lower">Fork Lower</button>
           </div>
           <p id="operator-command-status" class="operator-command-status">connecting controller...</p>
           <p id="operator-heartbeat-status" class="heartbeat-status">heartbeat transmitter offline</p>
