@@ -205,9 +205,16 @@
       max-width: 280px;
     }
 
+    .controller-row {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .fork-controller-grid {
-      grid-template-columns: repeat(2, minmax(110px, 1fr));
-      max-width: 280px;
+      grid-template-columns: minmax(110px, 1fr);
+      max-width: 140px;
     }
 
     .controller-grid button {
@@ -345,17 +352,19 @@
         </div>
         <div class="panel-footer">
           <p class="panel-title">Operator Controller</p>
-          <div class="controller-grid">
-            <span class="empty-cell" aria-hidden="true">.</span>
-            <button type="button" data-direction="forward" aria-label="Forward" title="Forward">&#8593;</button>
-            <span class="empty-cell" aria-hidden="true">.</span>
-            <button type="button" data-direction="left" aria-label="Left" title="Left">&#8592;</button>
-            <button type="button" data-direction="backward" aria-label="Backward" title="Backward">&#8595;</button>
-            <button type="button" data-direction="right" aria-label="Right" title="Right">&#8594;</button>
-          </div>
-          <div class="controller-grid fork-controller-grid">
-            <button type="button" class="text-control" data-direction="fork-rise" aria-label="Fork Rise" title="Fork Rise">Fork Rise</button>
-            <button type="button" class="text-control" data-direction="fork-lower" aria-label="Fork Lower" title="Fork Lower">Fork Lower</button>
+          <div class="controller-row">
+            <div class="controller-grid">
+              <span class="empty-cell" aria-hidden="true">.</span>
+              <button type="button" data-direction="forward" aria-label="Forward" title="Forward">&#8593;</button>
+              <span class="empty-cell" aria-hidden="true">.</span>
+              <button type="button" data-direction="left" aria-label="Left" title="Left">&#8592;</button>
+              <button type="button" data-direction="backward" aria-label="Backward" title="Backward">&#8595;</button>
+              <button type="button" data-direction="right" aria-label="Right" title="Right">&#8594;</button>
+            </div>
+            <div class="controller-grid fork-controller-grid">
+              <button type="button" class="text-control" data-direction="fork-rise" aria-label="Fork Rise" title="Fork Rise">Fork Rise</button>
+              <button type="button" class="text-control" data-direction="fork-lower" aria-label="Fork Lower" title="Fork Lower">Fork Lower</button>
+            </div>
           </div>
           <p id="operator-command-status" class="operator-command-status">connecting controller...</p>
           <p id="operator-heartbeat-status" class="heartbeat-status">heartbeat transmitter offline</p>
