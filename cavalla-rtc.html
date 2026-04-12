@@ -8,7 +8,7 @@
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      padding: 32px;
+      padding: 20px;
       background: #f6f6f6;
       color: #111;
     }
@@ -79,6 +79,7 @@
       display: flex;
       justify-content: space-between;
       gap: 24px;
+      align-items: stretch;
     }
 
     .box {
@@ -90,7 +91,7 @@
       align-items: stretch;
       justify-content: stretch;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       padding: 20px;
     }
 
@@ -122,9 +123,9 @@
 
     .panel {
       width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(280px, 56vh) auto;
       gap: 12px;
     }
 
@@ -133,17 +134,17 @@
       border: 2px solid #222;
       background: #111;
       min-height: 0;
-      flex: 0 0 auto;
       overflow: hidden;
     }
 
     .multi-video-stage {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
       gap: 8px;
       padding: 8px;
       box-sizing: border-box;
-      aspect-ratio: 16 / 9;
+      height: 100%;
     }
 
     .video-tile {
@@ -282,12 +283,21 @@
     }
 
     @media (max-width: 900px) {
+      body {
+        padding: 14px;
+      }
+
       .lane {
         flex-direction: column;
       }
 
+      .panel {
+        grid-template-rows: minmax(240px, 44vh) auto;
+      }
+
       .multi-video-stage {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(3, minmax(0, 1fr));
       }
     }
   </style>
