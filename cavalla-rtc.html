@@ -341,7 +341,7 @@
         </div>
       </div>
     </div>
-    <div class="box">
+    <div id="operator-box" class="box" hidden>
       <div class="box-label">operator</div>
       <div class="panel">
         <div class="video-stage multi-video-stage">
@@ -401,6 +401,7 @@
     const MOCK_FORKLIFT_STREAMS = 6;
     const MOCK_FORKLIFT_STREAM_NAME_PREFIX = 'mock-forklift-stream-';
     const forkliftBox = document.getElementById('forklift-box');
+    const operatorBox = document.getElementById('operator-box');
     const forkliftVideoSlots = [
       {
         video: document.getElementById('forklift-camera-1'),
@@ -802,6 +803,7 @@
         ]);
         forkliftRoomRef = forkliftRoom;
         sessionConnected = true;
+        operatorBox.hidden = false;
         renderOperatorLivekitStatus(operatorRoom.state);
 
         operatorRoom.on(window.LivekitClient.RoomEvent.ConnectionStateChanged, (state) => {
@@ -1038,6 +1040,7 @@
         operatorHeartbeatStatus.textContent = 'heartbeat transmitter offline';
         renderOperatorLivekitStatus('disconnected');
         roomMeta.textContent = 'failed to connect room';
+        operatorBox.hidden = true;
         sessionConnected = false;
         forkliftRoomRef = null;
         setMockForkliftCommandFeedActive(false);
