@@ -448,6 +448,7 @@
     let mockSourceVideo = null;
     let mockRenderRafId = null;
     let mockCanvasStreams = [];
+    let mockForkliftCommandFeedActive = false;
     let sessionConnected = false;
     let heartbeatIntervalId = null;
     let lastHeartbeatIso = null;
@@ -576,6 +577,18 @@
       forkliftEvents.textContent = commandHistory.join('\n');
     }
 
+    function setMockForkliftCommandFeedActive(active) {
+      if (mockForkliftCommandFeedActive === active) {
+        return;
+      }
+      mockForkliftCommandFeedActive = active;
+      if (active) {
+        appendForkliftEvent(`${new Date().toLocaleTimeString()} | mock forklift command feed online`);
+      } else {
+        appendForkliftEvent(`${new Date().toLocaleTimeString()} | mock forklift command feed offline`);
+      }
+    }
+
     function normalizeRoomName(rawValue) {
       const candidate = (rawValue || '').trim();
       const normalized = candidate.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-');
@@ -611,6 +624,7 @@
       startMockButton.disabled = true;
       setForkliftPrimaryStatus('starting mock forklift webcam...');
       try {
+        setMockForkliftCommandFeedActive(true);
         const sourceStream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: false,
@@ -678,6 +692,7 @@
         }
         startMockButton.textContent = 'Mock Forklift Cameras Started';
       } catch (error) {
+        setMockForkliftCommandFeedActive(false);
         stopMockForkliftCameraCapture();
         setForkliftPrimaryStatus('unable to start mock webcam. check permissions.');
         startMockButton.disabled = false;
@@ -841,6 +856,9 @@
               renderHeartbeat();
               return;
             }
+            if (message.type === 'forklift-control' && !mockForkliftCommandFeedActive) {
+              return;
+            }
             const time = new Date(message.sentAt).toLocaleTimeString();
             appendForkliftEvent(`${time} | ${message.direction} ${message.state}`);
           } catch (error) {
@@ -949,6 +967,7 @@
         roomMeta.textContent = 'failed to connect room';
         sessionConnected = false;
         forkliftRoomRef = null;
+        setMockForkliftCommandFeedActive(false);
         if (heartbeatIntervalId) {
           window.clearInterval(heartbeatIntervalId);
           heartbeatIntervalId = null;
